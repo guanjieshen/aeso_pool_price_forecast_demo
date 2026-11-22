@@ -1,0 +1,17 @@
+# Phase 3: AESO Market Pulse. Source is app/; command and env live in app/app.yaml.
+resources:
+  apps:
+    aeso_market_pulse:
+      name: aeso-market-pulse
+      description: "AESO Market Pulse: live Alberta pool price, 24h regime-aware forecast and ops actions for pipeline power cost"
+      source_code_path: ../app
+      resources:
+        - name: sql-warehouse
+          sql_warehouse:
+            id: ${var.warehouse_id}
+            permission: CAN_USE
+        - name: postgres
+          postgres:
+            branch: projects/${resources.postgres_projects.aeso_market_pulse_db.project_id}/branches/production
+            database: projects/${resources.postgres_projects.aeso_market_pulse_db.project_id}/branches/production/databases/databricks-postgres
+            permission: CAN_CONNECT_AND_CREATE

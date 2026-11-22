@@ -1,0 +1,32 @@
+# Phase 3: Lakebase. Hot app reads come from Postgres synced tables; ops actions are written back here.
+resources:
+  postgres_projects:
+    aeso_market_pulse_db:
+      project_id: aeso-market-pulse
+      display_name: AESO Market Pulse
+      pg_version: 17
+      default_endpoint_settings:
+        autoscaling_limit_min_cu: 0.5
+        autoscaling_limit_max_cu: 1
+
+  postgres_synced_tables:
+    forecast_latest:
+      synced_table_id: ${var.catalog}.${var.schema}.forecast_latest_synced
+      source_table_full_name: ${var.catalog}.${var.schema}.aeso_price_forecast_output
+      branch: projects/${resources.postgres_projects.aeso_market_pulse_db.project_id}/branches/production
+      postgres_database: databricks_postgres
+      primary_key_columns: [forecast_datetime_mpt]
+      scheduling_policy: SNAPSHOT
+      new_pipeline_spec:
+        storage_catalog: ${var.catalog}
+        storage_schema: ${var.schema}
+    pool_price_hourly:
+      synced_table_id: ${var.catalog}.${var.schema}.pool_price_hourly_synced
+      source_table_full_name: ${var.catalog}.${var.schema}.silver_pool_price_hourly
+      branch: projects/${resources.postgres_projects.aeso_market_pulse_db.project_id}/branches/production
+      postgres_database: databricks_postgres
+      primary_key_columns: [begin_datetime_utc]
+      scheduling_policy: SNAPSHOT
+      new_pipeline_spec:
+        storage_catalog: ${var.catalog}
+        storage_schema: ${var.schema}

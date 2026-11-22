@@ -55,8 +55,13 @@ resources:
             base_parameters:
               run_backtest: "false"
               experiment: ${resources.experiments.aeso_forecast.name}
-        - task_key: governance
+        - task_key: lakebase_sync
           depends_on:
             - task_key: forecast
+          notebook_task:
+            notebook_path: ../src/lakebase/sync_and_copy_back.py
+        - task_key: governance
+          depends_on:
+            - task_key: lakebase_sync
           notebook_task:
             notebook_path: ../src/governance/setup_uc.py
