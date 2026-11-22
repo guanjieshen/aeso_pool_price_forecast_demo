@@ -22,8 +22,8 @@ Each phase is one GitHub milestone, one tracking issue and one pull request into
 | Phase | Scope | Done when | Status |
 | --- | --- | --- | --- |
 | **1. Data engineering** | Ingest (pool price, wind/solar forecast, wind/solar metered history), Lakeflow declarative pipeline (silver/gold, expectations), UC governance, hourly Lakeflow job | Hourly job green end to end; row counts and expectations in `evidence/` | ✅ |
-| **2. ML** | HMM + Prophet + Monte Carlo, converged models, ensemble, 5-day walk-forward backtest with AESO and naive baselines, MLflow + UC model registry, business value | Backtest metrics written, model `@champion` registered | 🚧 |
-| **3. App + Lakebase** | Lakebase project, synced tables, `ops_actions` write-back, AESO Market Pulse app (9 cards + ops action form) | App deployed, reads Lakebase, write-back round trip verified | ⬜ |
+| **2. ML** | HMM + Prophet + Monte Carlo, converged models, ensemble, 5-day walk-forward backtest with AESO and naive baselines, MLflow + UC model registry, business value | Backtest metrics written, model `@champion` registered | ✅ |
+| **3. App + Lakebase** | Lakebase project, synced tables, `ops_actions` write-back, AESO Market Pulse app (9 cards + ops action form) | App deployed, reads Lakebase, write-back round trip verified | 🚧 |
 | **4. AI + story** | Genie space (instructions, benchmark), screen-aware "Analyze with Genie" links to Genie One, evidence export, deck | Benchmark scored, evidence and deck committed | ⬜ |
 
 ## Architecture

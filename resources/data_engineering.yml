@@ -1,4 +1,4 @@
-# Phase 1: ingest -> declarative pipeline -> governance, hourly. Later phases add forecast and Lakebase tasks.
+# Phase 1: ingest -> declarative pipeline -> governance, hourly.
 resources:
   pipelines:
     aeso_transform:
@@ -47,8 +47,16 @@ resources:
             - task_key: ingest_wind_solar_metered
           pipeline_task:
             pipeline_id: ${resources.pipelines.aeso_transform.id}
-        - task_key: governance
+        - task_key: forecast
           depends_on:
             - task_key: transform
+          notebook_task:
+            notebook_path: ../src/ml/pool_price_forecast.py
+            base_parameters:
+              run_backtest: "false"
+              experiment: ${resources.experiments.aeso_forecast.name}
+        - task_key: governance
+          depends_on:
+            - task_key: forecast
           notebook_task:
             notebook_path: ../src/governance/setup_uc.py
