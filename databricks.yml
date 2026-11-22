@@ -1,0 +1,26 @@
+# AESO pool price forecast for Enbridge Liquids Pipelines.
+# One bundle deploys every stage: jobs, pipeline, Lakebase, app and Genie space.
+bundle:
+  name: aeso_pool_price_forecast
+
+include:
+  - resources/*.yml
+
+variables:
+  catalog:
+    description: Unity Catalog catalog that holds the schema.
+    default: energy_canada_demos_catalog
+  schema:
+    description: Schema for every table, the model and the AESO API key secret.
+    default: aeso_price_forecast
+  warehouse_id:
+    description: SQL warehouse used by the app, the governance task and Genie.
+    default: fd18e0ef46eba09f
+
+targets:
+  dev:
+    default: true
+    workspace:
+      host: https://fevm-energy-canada-demos.cloud.databricks.com
+      profile: fevm-energy-canada
+      root_path: /Workspace/Users/${workspace.current_user.userName}/aeso-market-pulse

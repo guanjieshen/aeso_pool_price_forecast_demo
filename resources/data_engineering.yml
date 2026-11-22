@@ -1,0 +1,54 @@
+# Phase 1: ingest -> declarative pipeline -> governance, hourly. Later phases add forecast and Lakebase tasks.
+resources:
+  pipelines:
+    aeso_transform:
+      name: aeso-transform
+      catalog: ${var.catalog}
+      schema: ${var.schema}
+      serverless: true
+      channel: CURRENT
+      configuration:
+        aeso.catalog: ${var.catalog}
+        aeso.schema: ${var.schema}
+      libraries:
+        - file:
+            path: ../src/pipeline/transformations.py
+
+  jobs:
+    aeso_hourly:
+      name: aeso-hourly
+      description: Hourly AESO ingest, transform, forecast and governance for AESO Market Pulse.
+      schedule:
+        quartz_cron_expression: "0 20 * * * ?"   # 20 past each hour, after AESO settles the previous hour
+        timezone_id: America/Edmonton
+        pause_status: UNPAUSED
+      max_concurrent_runs: 1
+      parameters:
+        - name: catalog
+          default: ${var.catalog}
+        - name: schema
+          default: ${var.schema}
+        - name: full_refresh          # true re-pulls metered wind/solar history from 2026-01-01
+          default: "false"
+      tasks:
+        - task_key: ingest_pool_price
+          notebook_task:
+            notebook_path: ../src/ingest/pool_price_incremental.py
+        - task_key: ingest_wind_solar_forecast
+          notebook_task:
+            notebook_path: ../src/ingest/wind_solar_forecast.py
+        - task_key: ingest_wind_solar_metered
+          notebook_task:
+            notebook_path: ../src/ingest/wind_solar_metered.py
+        - task_key: transform
+          depends_on:
+            - task_key: ingest_pool_price
+            - task_key: ingest_wind_solar_forecast
+            - task_key: ingest_wind_solar_metered
+          pipeline_task:
+            pipeline_id: ${resources.pipelines.aeso_transform.id}
+        - task_key: governance
+          depends_on:
+            - task_key: transform
+          notebook_task:
+            notebook_path: ../src/governance/setup_uc.py
