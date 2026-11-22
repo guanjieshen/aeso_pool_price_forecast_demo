@@ -1,0 +1,178 @@
+{
+ "version": 2,
+ "config": {
+  "sample_questions": [
+   {
+    "id": "a0e50000000000000000000000000001",
+    "question": [
+     "What is the pool price forecast for the next 24 hours?"
+    ]
+   },
+   {
+    "id": "a0e50000000000000000000000000002",
+    "question": [
+     "Which hours this week had the highest pool price?"
+    ]
+   },
+   {
+    "id": "a0e50000000000000000000000000003",
+    "question": [
+     "How accurate is the ensemble compared with AESO's forecast?"
+    ]
+   },
+   {
+    "id": "a0e50000000000000000000000000004",
+    "question": [
+     "When should flexible pumping avoid running tomorrow?"
+    ]
+   },
+   {
+    "id": "a0e50000000000000000000000000005",
+    "question": [
+     "How much lower is the price when wind + solar is above 3,000 MW?"
+    ]
+   },
+   {
+    "id": "a0e50000000000000000000000000006",
+    "question": [
+     "Which spike alerts fired today?"
+    ]
+   }
+  ]
+ },
+ "data_sources": {
+  "tables": [
+   {
+    "identifier": "energy_canada_demos_catalog.aeso_price_forecast.aeso_backtest_detail",
+    "description": [
+     "Hourly actual vs predicted pool price per backtest day (cutoff_date) and run (run_timestamp). Columns per model: prophet, mc, prophet_regime, mc_seasonal, ensemble, plus baselines aeso_forecast and naive_yesterday."
+    ]
+   },
+   {
+    "identifier": "energy_canada_demos_catalog.aeso_price_forecast.aeso_backtest_metrics",
+    "description": [
+     "Accuracy per model per backtest run: mae_cad_mwh, rmse_cad_mwh, mape_pct (hours priced >= $1 only). model_type is 'model' or 'baseline'."
+    ]
+   },
+   {
+    "identifier": "energy_canada_demos_catalog.aeso_price_forecast.aeso_business_value",
+    "description": [
+     "Business value facts: spike concentration in 2026 prices and load-shift savings per flexible MW per day by strategy, with capture_rate_pct vs perfect foresight. Assumption: shift_hours hours per day."
+    ]
+   },
+   {
+    "identifier": "energy_canada_demos_catalog.aeso_price_forecast.aeso_pool_price",
+    "description": [
+     "Bronze hourly AESO pool price, CAD/MWh. begin_datetime_mpt is Mountain Time wall clock. pool_price is null until the hour settles."
+    ]
+   },
+   {
+    "identifier": "energy_canada_demos_catalog.aeso_price_forecast.aeso_price_forecast_output",
+    "description": [
+     "Latest 24h pool price forecast from every model plus the ensemble. forecast_regime and p_spike come from Monte Carlo paths of the HMM."
+    ]
+   },
+   {
+    "identifier": "energy_canada_demos_catalog.aeso_price_forecast.gold_price_features_hourly",
+    "description": [
+     "One row per Mountain Time hour (ds): settled price y, AESO forecast, wind + solar MW regressor. Future hours have y = NULL."
+    ]
+   },
+   {
+    "identifier": "energy_canada_demos_catalog.aeso_price_forecast.ops_actions_history",
+    "description": [
+     "Spike alerts and load shifts logged by operators in the AESO Market Pulse app (copied from Lakebase). window_start_mpt / window_end_mpt are Mountain Time."
+    ]
+   },
+   {
+    "identifier": "energy_canada_demos_catalog.aeso_price_forecast.silver_wind_solar_hourly",
+    "description": [
+     "Hourly wind + solar generation in MW. actual_mw from AESO metered volumes or the forecast CSV; most_likely_mw is AESO's forecast; regressor_source says which; is_imputed flags averaged hours."
+    ]
+   }
+  ]
+ },
+ "instructions": {
+  "text_instructions": [
+   {
+    "id": "a0e50000000000000000000000000007",
+    "content": [
+     "You answer questions about the Alberta electricity pool price for Enbridge Liquids Pipelines power procurement and pipeline operations.\n- Units: prices are CAD per MWh (\"$/MWh\"); generation is MW. Round money to 2 decimals.\n- Time: every *_mpt column and ds, forecast_transaction_date, forecast_datetime_mpt, forecast_hour are Mountain Time wall clock. Never convert time zones.\n- AESO hour-ending: HE = HOUR(begin_datetime_mpt) + 1 (HE01..HE24). When users say \"hour 18\" assume hour-ending 18 unless they say otherwise.\n- DAYOFWEEK returns 1 = Sunday ... 7 = Saturday.\n- Settled prices only: filter pool_price IS NOT NULL (or is_settled / y IS NOT NULL) for history questions.\n- \"Spike\" as a price level means pool_price > 150. \"Spike regime\" means the HMM state (forecast_regime = 'Spike'). Regimes are Low, Normal, Spike.\n- Latest forecast: aeso_price_forecast_output holds only the latest run; latest backtest: filter run_timestamp = MAX(run_timestamp) in aeso_backtest_metrics / aeso_backtest_detail.\n- AESO's own forecast (aeso_forecast, forecast_pool_price) is published only hours ahead; say so when comparing it with the day-ahead models.\n- The flexible load MW and shift hours in aeso_business_value are planning assumptions, not measured Enbridge load."
+    ]
+   }
+  ],
+  "example_question_sqls": [
+   {
+    "id": "a0e50000000000000000000000000008",
+    "question": [
+     "What is the forecast for the next 24 hours, with the spike risk?"
+    ],
+    "sql": [
+     "SELECT forecast_datetime_mpt, hour_ending, ROUND(ensemble_forecast_price, 2) AS ensemble_cad_mwh, ROUND(mc_p10_price, 2) AS p10, ROUND(mc_p90_price, 2) AS p90, forecast_regime, ROUND(p_spike, 2) AS p_spike\nFROM energy_canada_demos_catalog.aeso_price_forecast.aeso_price_forecast_output\nORDER BY forecast_datetime_mpt"
+    ]
+   },
+   {
+    "id": "a0e50000000000000000000000000009",
+    "question": [
+     "Which model is most accurate in the latest backtest?"
+    ],
+    "sql": [
+     "SELECT model_name, model_type, ROUND(mae_cad_mwh, 2) AS mae, ROUND(rmse_cad_mwh, 2) AS rmse, ROUND(mape_pct, 1) AS mape_pct\nFROM energy_canada_demos_catalog.aeso_price_forecast.aeso_backtest_metrics\nWHERE run_timestamp = (SELECT MAX(run_timestamp) FROM energy_canada_demos_catalog.aeso_price_forecast.aeso_backtest_metrics)\nORDER BY mae_cad_mwh"
+    ]
+   },
+   {
+    "id": "a0e5000000000000000000000000000a",
+    "question": [
+     "Average pool price by hour-ending over the last 30 days"
+    ],
+    "sql": [
+     "SELECT HOUR(begin_datetime_mpt) + 1 AS hour_ending, ROUND(AVG(pool_price), 2) AS avg_price_cad_mwh\nFROM energy_canada_demos_catalog.aeso_price_forecast.aeso_pool_price\nWHERE pool_price IS NOT NULL AND begin_datetime_mpt >= (SELECT MAX(begin_datetime_mpt) FROM energy_canada_demos_catalog.aeso_price_forecast.aeso_pool_price) - INTERVAL 30 DAYS\nGROUP BY 1 ORDER BY 1"
+    ]
+   },
+   {
+    "id": "a0e5000000000000000000000000000b",
+    "question": [
+     "How does wind and solar generation affect the pool price?"
+    ],
+    "sql": [
+     "SELECT CASE WHEN w.actual_mw >= 3000 THEN '3000+ MW' WHEN w.actual_mw >= 1500 THEN '1500-3000 MW' ELSE '<1500 MW' END AS wind_solar_band,\n       COUNT(*) AS hours, ROUND(AVG(p.pool_price), 2) AS avg_price_cad_mwh\nFROM energy_canada_demos_catalog.aeso_price_forecast.aeso_pool_price p JOIN energy_canada_demos_catalog.aeso_price_forecast.silver_wind_solar_hourly w ON p.begin_datetime_mpt = w.forecast_transaction_date\nWHERE p.pool_price IS NOT NULL AND w.actual_mw IS NOT NULL\nGROUP BY 1 ORDER BY 3 DESC"
+    ]
+   },
+   {
+    "id": "a0e5000000000000000000000000000c",
+    "question": [
+     "How much of the 2026 power cost came from spike hours?"
+    ],
+    "sql": [
+     "SELECT metric, ROUND(value, 2) AS value FROM energy_canada_demos_catalog.aeso_price_forecast.aeso_business_value\nWHERE run_timestamp = (SELECT MAX(run_timestamp) FROM energy_canada_demos_catalog.aeso_price_forecast.aeso_business_value) AND strategy IS NULL\nORDER BY metric"
+    ]
+   },
+   {
+    "id": "a0e5000000000000000000000000000d",
+    "question": [
+     "Which ops actions fired against the forecast?"
+    ],
+    "sql": [
+     "SELECT a.action_id, a.action_type, a.window_start_mpt, a.window_end_mpt, a.threshold, MAX(f.p_spike) AS max_p_spike, MAX(f.p_spike) >= a.threshold AS fired\nFROM energy_canada_demos_catalog.aeso_price_forecast.ops_actions_history a JOIN energy_canada_demos_catalog.aeso_price_forecast.aeso_price_forecast_output f\n  ON f.forecast_datetime_mpt BETWEEN a.window_start_mpt AND a.window_end_mpt\nWHERE a.action_type = 'spike_alert'\nGROUP BY ALL ORDER BY a.action_id"
+    ]
+   }
+  ],
+  "join_specs": [
+   {
+    "id": "a0e5000000000000000000000000000e",
+    "left": {
+     "identifier": "energy_canada_demos_catalog.aeso_price_forecast.aeso_pool_price",
+     "alias": "aeso_pool_price"
+    },
+    "right": {
+     "identifier": "energy_canada_demos_catalog.aeso_price_forecast.silver_wind_solar_hourly",
+     "alias": "silver_wind_solar_hourly"
+    },
+    "sql": [
+     "`aeso_pool_price`.`begin_datetime_mpt` = `silver_wind_solar_hourly`.`forecast_transaction_date`",
+     "--rt=FROM_RELATIONSHIP_TYPE_ONE_TO_ONE--"
+    ]
+   }
+  ]
+ }
+}

@@ -1,0 +1,9 @@
+# Phase 4: the governed Genie space over the gold, forecast, backtest and ops tables.
+resources:
+  genie_spaces:
+    aeso_market_pulse_genie:
+      title: AESO Market Pulse Genie
+      description: Ask about Alberta pool prices, the 24h regime-aware forecast, model accuracy and ops actions (Enbridge Liquids Pipelines power cost).
+      warehouse_id: ${var.warehouse_id}
+      parent_path: /Workspace/Users/${workspace.current_user.userName}/aeso-market-pulse
+      file_path: ../src/genie/aeso_market_pulse.geniespace.json
