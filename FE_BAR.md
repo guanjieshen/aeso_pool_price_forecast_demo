@@ -12,6 +12,8 @@ Power is the **largest operating cost** of a liquids pipeline. Its Alberta pump 
 | Control centre (Operate) | Flexible MWh run in spike hours | 24h forecast and hour ranking: which hours to avoid |
 | Energy desk (Protect) | Spike exposure (MWh bought above $150) | Day-ahead spike probability, alerts, outage outlook |
 
+**Why it matters beyond the opex line (to validate with Enbridge):** how much of Alberta power cost flows through to shippers in tolls versus sitting in Enbridge's margin, and how a lower, more predictable power cost per barrel strengthens toll competitiveness against rival pipes and rail and frees cash for capital allocation. These are discovery questions for the VP, not claims we make for them.
+
 ## Lakeflow build (code in this repo)
 
 **Lakeflow Jobs** (`resources/data_and_ml.yml`, deployed by the bundle): job `aeso-hourly`, cron `0 20 * * * ?` America/Edmonton, serverless. Task graph:
