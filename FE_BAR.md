@@ -16,39 +16,33 @@ Power is the **largest operating cost** of a liquids pipeline. Its Alberta pump 
 
 ## Lakeflow build (code in this repo)
 
-**Lakeflow Jobs** (`resources/data_and_ml.yml`, deployed by the bundle): job `aeso-hourly`, cron `0 20 * * * ?` America/Edmonton, serverless. Task graph:
-
-```yaml
-tasks:
-  - task_key: ingest_pool_price        # notebook ../src/ingest/pool_price_incremental.py (MERGE)
-  - task_key: ingest_wind_solar_forecast
-  - task_key: ingest_wind_solar_metered
-  - task_key: ingest_outage_outlook
-  - task_key: ingest_supply_demand     # depends_on ingest_wind_solar_forecast; archives as published
-  - task_key: transform                # depends_on all ingests
-    pipeline_task: { pipeline_id: ${resources.pipelines.aeso_transform.id} }
-  - task_key: forecast                 # then lakebase_sync, then governance
-```
-
-Plus `aeso-weekly-retrain`, `aeso-evaluate-challenger` (**model update trigger** on `@challenger`), `aeso-daily-monitor` and `aeso-rebaseline`.
-
-**Lakeflow Spark Declarative Pipeline** `aeso-transform` (`src/pipeline/transformations.py`): four materialized views from bronze to gold, with expectations:
+**Raw landing, then the pipeline owns ingestion.** The hourly **Lakeflow Job** (`resources/data_and_ml.yml`, cron `0 20 * * * ?` America/Edmonton, serverless) only fetches from AESO and lands raw files in the Unity Catalog volume `raw/<feed>/`: pool price, wind/solar CSV, metered assets, load, capability, interties, published forecasts, outage reports. The **Lakeflow Spark Declarative Pipeline** `aeso-transform` does the rest, raw to bronze to silver to gold:
 
 ```python
-from pyspark import pipelines as dp
-@dp.materialized_view(comment="Silver: hourly AESO pool price, deduplicated and range-checked ...")
-@dp.expect_or_drop("price_in_market_range", "pool_price IS NULL OR pool_price BETWEEN 0 AND 999.99")
-def silver_pool_price_hourly(): ...
-# also silver_wind_solar_hourly, silver_supply_demand_hourly (day-ahead as-known columns), gold_price_features_hourly
+# src/pipeline/ingest.py: bronze streaming tables read the raw files incrementally with Auto Loader
+@dp.table(comment="Bronze: AESO pool price report records exactly as returned by the API ...")
+@dp.expect("has_hour", "begin_datetime_utc IS NOT NULL")
+def bronze_pool_price():
+    return autoload("pool_price", "json", "begin_datetime_utc STRING, ... fetched_at STRING")  # cloudFiles
+
+@dp.materialized_view(comment="Silver: AESO hourly pool price, typed, latest landed record per hour ...")
+@dp.expect_or_drop("valid_hour", "begin_datetime_utc IS NOT NULL AND begin_datetime_mpt IS NOT NULL")
+def aeso_pool_price(): ...
 ```
 
-Run evidence: the job's task graph as deployed, each task's state, and the pipeline update with its expectation results ([01](evidence/01_ingest.md), [02](evidence/02_pipeline_governance.md)).
+| Layer | Datasets |
+| --- | --- |
+| Bronze (streaming tables, Auto Loader) | `bronze_pool_price`, `bronze_wind_solar_forecast`, `bronze_wind_solar_metered`, `bronze_load`, `bronze_gen_capacity`, `bronze_intertie`, `bronze_wind_solar_published`, `bronze_outage_outlook` |
+| Silver (materialized views) | Conformed `aeso_*` (typed, latest per key), the as-known `aeso_fundamentals_snapshots`, and `silver_*` modelling views (`src/pipeline/transformations.py`) |
+| Gold | `gold_price_features_hourly`, read by the model, the app and Genie |
+
+Job tasks: five land tasks, then `transform` (pipeline_task), `forecast`, `lakebase_sync`, `governance`. Other jobs: `aeso-weekly-retrain`, `aeso-evaluate-challenger` (**model update trigger** on `@challenger`), `aeso-daily-monitor`, `aeso-rebaseline`.
 
 ## The data journey
 
 | Stage | What runs | Where |
 | --- | --- | --- |
-| **Lakeflow** | Jobs above: AESO API + CSV ingest (incremental MERGE from 2026-01-01; wind/solar history **rebuilt from 99 metered assets**; load, capability net of outages, interties, outage outlook; **as-published snapshot archive**) then the declarative pipeline | `resources/data_and_ml.yml`, `src/ingest/`, `src/pipeline/` |
+| **Lakeflow** | Job lands raw AESO files (from 2026-01-01; wind/solar history **rebuilt from 99 metered assets**; load, capability, interties, outage outlook); the declarative pipeline ingests them raw to bronze to silver to gold, including the **as-known snapshot archive** | `resources/data_and_ml.yml`, `src/ingest/`, `src/pipeline/` |
 | **Unity Catalog** | Governed tags from the metastore's tag policies, comments, lineage, AESO key as a **UC secret**, least-privilege grants | `src/governance/setup_uc.py` |
 | **ML** | 3-state HMM + Prophet + Monte Carlo ensemble plus a **supply-cushion model** for tight hours; walk-forward backtests on **day-ahead features**; MLflow; UC model `pool_price_ensemble@champion`; weekly challenger, gated promotion, drift monitor | `src/ml/` |
 | **Lakebase** | Synced tables for the live cards + `ops_actions` write-back | `resources/serving.yml`, `src/lakebase/` |
