@@ -1,6 +1,6 @@
 # App and Lakebase: AESO Market Pulse
 
-A FastAPI backend (`app/app.py`) and one page (`app/static/index.html`, Plotly.js) deployed as a Databricks App by the bundle (`resources/app.yml`). It refreshes every 5 minutes.
+A FastAPI backend (`app/app.py`) and one page (`app/static/index.html`, Plotly.js) deployed as a Databricks App by the bundle (`resources/serving.yml`). It refreshes every 5 minutes.
 
 ## Where each card reads from
 

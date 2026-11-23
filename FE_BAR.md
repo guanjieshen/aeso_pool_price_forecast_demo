@@ -15,12 +15,12 @@ Power is the **largest operating cost** for a liquids pipeline. Its Alberta pump
 
 | Stage | What runs | Where | Status |
 | --- | --- | --- | --- |
-| **Lakeflow** ingest | Hourly Lakeflow Job: pool price API (incremental MERGE from 2026-01-01), wind/solar CSV, wind/solar **metered history rebuilt from 99 assets** | `src/ingest/`, `resources/data_engineering.yml` | ✅ |
+| **Lakeflow** ingest | Hourly Lakeflow Job: pool price API (incremental MERGE from 2026-01-01), wind/solar CSV, wind/solar **metered history rebuilt from 99 assets** | `src/ingest/`, `resources/data_and_ml.yml` | ✅ |
 | **Lakeflow** transform | Declarative pipeline: silver/gold materialized views with expectations (market price range, keys, regressor present) | `src/pipeline/transformations.py` | ✅ |
 | **Unity Catalog** | Governed tags from the metastore's tag policies, table/column comments, lineage, AESO key as a **UC secret** (read by the job and the app identity), least-privilege grants | `src/governance/setup_uc.py` | ✅ |
 | **ML** | 3-state HMM + Prophet + Monte Carlo, converged, ensemble; 5-day walk-forward backtest; MLflow; UC model `pool_price_ensemble@champion` | `src/ml/` | ✅ |
-| **Lakebase** | Synced tables for the app's live cards + `ops_actions` write-back | `resources/lakebase.yml`, `src/lakebase/` | ✅ |
-| **App** | AESO Market Pulse (FastAPI + Plotly.js), 9 cards + ops action form | `app/`, `resources/app.yml` | ✅ |
+| **Lakebase** | Synced tables for the app's live cards + `ops_actions` write-back | `resources/serving.yml`, `src/lakebase/` | ✅ |
+| **App** | AESO Market Pulse (FastAPI + Plotly.js), 9 cards + ops action form | `app/`, `resources/serving.yml` | ✅ |
 | **Genie** | Genie space with instructions and a scored benchmark; screen-aware "Analyze with Genie" links into Genie One | `src/genie/`, `scripts/genie_benchmark.py` | ✅ |
 
 ## Results (real runs, see `evidence/`)

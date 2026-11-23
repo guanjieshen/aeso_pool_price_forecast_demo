@@ -1,4 +1,5 @@
-# Phase 1: ingest -> declarative pipeline -> governance, hourly.
+# Phases 1-2: hourly ingest -> declarative pipeline -> forecast -> Lakebase sync -> governance,
+# plus the daily backtest + model registration job and its MLflow experiment.
 resources:
   pipelines:
     aeso_transform:
@@ -13,6 +14,10 @@ resources:
       libraries:
         - file:
             path: ../src/pipeline/transformations.py
+
+  experiments:
+    aeso_forecast:
+      name: /Workspace/Users/${workspace.current_user.userName}/aeso-market-pulse/aeso_pool_price_forecast
 
   jobs:
     aeso_hourly:
@@ -63,5 +68,36 @@ resources:
         - task_key: governance
           depends_on:
             - task_key: lakebase_sync
+          notebook_task:
+            notebook_path: ../src/governance/setup_uc.py
+    aeso_daily_backtest:
+      name: aeso-daily-backtest
+      description: Daily walk-forward backtest of every model, business value, and @champion registration.
+      schedule:
+        quartz_cron_expression: "0 45 6 * * ?"   # 06:45 MPT, after yesterday's prices settle
+        timezone_id: America/Edmonton
+        pause_status: UNPAUSED
+      max_concurrent_runs: 1
+      parameters:
+        - name: catalog
+          default: ${var.catalog}
+        - name: schema
+          default: ${var.schema}
+      tasks:
+        - task_key: backtest_and_register
+          notebook_task:
+            notebook_path: ../src/ml/pool_price_forecast.py
+            base_parameters:
+              run_backtest: "true"
+              backtest_days: "5"
+              experiment: ${resources.experiments.aeso_forecast.name}
+        - task_key: business_value
+          depends_on:
+            - task_key: backtest_and_register
+          notebook_task:
+            notebook_path: ../src/ml/business_value.py
+        - task_key: governance
+          depends_on:
+            - task_key: business_value
           notebook_task:
             notebook_path: ../src/governance/setup_uc.py

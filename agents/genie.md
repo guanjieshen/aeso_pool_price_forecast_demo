@@ -2,7 +2,7 @@
 
 ## The Genie space
 
-`AESO Market Pulse Genie`, deployed by the bundle from `src/genie/aeso_market_pulse.geniespace.json` (`resources/genie.yml`). It covers 8 tables: gold features, pool price, wind/solar, forecast, backtest metrics and detail, business value, ops actions.
+`AESO Market Pulse Genie`, deployed by the bundle from `src/genie/aeso_market_pulse.geniespace.json` (`resources/serving.yml`). It covers 8 tables: gold features, pool price, wind/solar, forecast, backtest metrics and detail, business value, ops actions.
 
 | Part | What it carries |
 | --- | --- |
