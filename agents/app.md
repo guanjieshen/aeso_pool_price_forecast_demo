@@ -2,11 +2,24 @@
 
 A FastAPI backend (`app/app.py`) and one page (`app/static/index.html`, Plotly.js) deployed as a Databricks App by the bundle (`resources/serving.yml`). It refreshes every 5 minutes.
 
+## Layout: ordered by decision
+
+| Section | Cards | The question it answers |
+| --- | --- | --- |
+| Header | Out-today chip (from `outages`), forecast score badge + popover (card 0) | Can I trust this, and is supply tight today? |
+| Now | 1 Pool price, 5 Next 6 hours | What is the market doing? |
+| Plan the next 24 hours | 7 24-hour forecast (wide), 6 Regime / spike risk, 2 48-hour curve | Which hours to avoid, how likely is a spike? |
+| Act | 10 Ops actions (wide) | Log a spike alert or load shift |
+| Why | 11 Outage outlook (wide), 3 Wind vs price, 4 Heatmap | What on the supply side is driving it? |
+| Check the model | 8 Backtest day, 9 Leaderboard | How did it do on past days? |
+
+Keep this order when adding a card: put it in the section whose question it answers.
+
 ## Where each card reads from
 
 | # | Card | Feed | Source | Filter |
 | --- | --- | --- | --- | --- |
-| 0 | Accuracy score (wide, top) | `accuracy` | Warehouse: `aeso_backtest_windows` | Latest re-baseline run: champion's mean capture over three 14-day windows as a 0 to 100 score (STRONG ≥ 85, FAIR ≥ 70), vs AESO and same hour yesterday, typical error = MAE. Refreshed after every promotion by `rebaseline_windows.py` |
+| 0 | Forecast score badge (header, click for the popover) | `accuracy` | Warehouse: `aeso_backtest_windows` | Latest re-baseline run: champion's mean capture over three 14-day windows as a 0 to 100 score (STRONG ≥ 85, FAIR ≥ 70), vs AESO and same hour yesterday, typical error = MAE. Refreshed after every promotion by `rebaseline_windows.py` |
 | 1 | Pool price right now | `prices` | **Lakebase** `aeso_price_forecast.pool_price_hourly_synced` | Latest non-null `pool_price` |
 | 2 | 48-hour price curve | `prices` | Lakebase | Last 48 settled rows |
 | 3 | Wind + solar vs price (7 days) | `wind` | Warehouse: `aeso_pool_price` x `silver_wind_solar_hourly` | `DATE_TRUNC('hour', ...)` join |

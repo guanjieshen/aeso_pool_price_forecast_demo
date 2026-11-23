@@ -40,6 +40,26 @@
   input, select, button { background:var(--bg); color:var(--text); border:1px solid var(--line); padding:5px; font:12px var(--mono); }
   button { border-color:var(--blue); color:var(--blue); cursor:pointer; }
   .tag { font:600 10px var(--mono); padding:1px 5px; border:1px solid currentColor; }
+  #outchip { margin-left:auto; }
+  .score { margin-left:8px; display:flex; align-items:center; gap:6px; background:none; border:1px solid var(--line); color:var(--muted);
+           font:500 11px var(--mono); padding:3px 8px; cursor:pointer; }
+  .score:hover, .score[aria-expanded="true"] { border-color:var(--muted); color:var(--text); }
+  .score b { color:var(--text); font-weight:600; }
+  .sdot { width:7px; height:7px; border-radius:50%; }
+  .updated { margin-left:12px; }
+  #c0 { display:none; position:absolute; top:44px; right:18px; width:420px; z-index:10; background:var(--card); border:1px solid var(--line);
+        padding:12px 14px; box-shadow:0 8px 24px rgba(0,0,0,.5); font-size:12px; }
+  #c0.open { display:block; }
+  #c0 h2 { display:flex; justify-content:space-between; margin:0 0 8px; font:600 10px var(--mono); letter-spacing:.1em; text-transform:uppercase; color:var(--muted); }
+  #c0 table td { padding:4px 2px; font-size:11px; }
+  header { position:relative; }
+  .section { grid-column:1 / -1; margin:8px 2px -2px; font:11px var(--mono); color:var(--muted); letter-spacing:.06em; }
+  .section b { color:var(--text); text-transform:uppercase; letter-spacing:.12em; margin-right:6px; }
+  .chip { display:flex; align-items:center; gap:6px; border:1px solid var(--line); color:var(--muted); font:500 11px var(--mono); padding:3px 8px; }
+  .chip b { color:var(--text); font-weight:600; }
+  header > * { white-space:nowrap; flex-shrink:0; }
+  header > #c0 { white-space:normal; }
+  header > .muted { flex-shrink:1; min-width:0; overflow:hidden; text-overflow:ellipsis; }
 </style>
 </head>
 <body>
@@ -47,20 +67,20 @@
   <h1>AESO MARKET PULSE</h1>
   <span class="live"><span class="dot"></span>LIVE</span>
   <span class="muted num">Alberta pool price · CAD/MWh · Mountain Time · hour-ending</span>
+  <span class="chip" id="outchip" title="Dispatchable generation (gas, hydro, storage, other) AESO expects out on outage today">OUT TODAY --</span>
+  <button class="score" id="score" aria-expanded="false" title="How accurate is the forecast? Click for details">FORECAST SCORE --</button>
   <span class="updated" id="updated">Updated --</span>
+  <div id="c0" role="dialog"><h2>Forecast score (backtest) <a class="genie" target="_blank">ASK GENIE ↗</a></h2><div class="body"></div></div>
 </header>
 <main>
-  <section class="card wide" id="c0" style="min-height:0"><h2>How accurate is the forecast? (backtest score) <a class="genie" target="_blank">ANALYZE WITH GENIE ↗</a></h2><div class="body"></div></section>
+  <div class="section"><b>Now</b> what the market is doing</div>
   <section class="card" id="c1"><h2>Pool price right now <a class="genie" target="_blank">ANALYZE WITH GENIE ↗</a></h2><div class="body"></div></section>
-  <section class="card" id="c2"><h2>48-hour price curve <a class="genie" target="_blank">ANALYZE WITH GENIE ↗</a></h2><div class="chart"></div></section>
-  <section class="card" id="c3"><h2>Wind + solar generation vs price (7 days) <a class="genie" target="_blank">ANALYZE WITH GENIE ↗</a></h2><div class="chart"></div></section>
-  <section class="card" id="c4"><h2>Peak hour heatmap (90 days) <a class="genie" target="_blank">ANALYZE WITH GENIE ↗</a></h2><div class="chart"></div></section>
   <section class="card" id="c5"><h2>Price direction (next 6 hours) <a class="genie" target="_blank">ANALYZE WITH GENIE ↗</a></h2><div class="body"></div></section>
-  <section class="card" id="c6"><h2>24-hour market regime forecast <a class="genie" target="_blank">ANALYZE WITH GENIE ↗</a></h2><div class="chart"></div></section>
+  <div class="section"><b>Plan the next 24 hours</b> which hours to avoid, and how likely a spike is</div>
   <section class="card wide" id="c7"><h2>24-hour price forecast <a class="genie" target="_blank">ANALYZE WITH GENIE ↗</a></h2><div class="chart"></div></section>
-  <section class="card wide" id="c11"><h2>Generation outage outlook (AESO daily + monthly reports) <a class="genie" target="_blank">ANALYZE WITH GENIE ↗</a></h2><div class="chart"></div><div class="body"></div></section>
-  <section class="card" id="c8"><h2>Backtest: actual vs predicted <a class="genie" target="_blank">ANALYZE WITH GENIE ↗</a></h2><div class="chart"></div></section>
-  <section class="card" id="c9"><h2>Model accuracy leaderboard <a class="genie" target="_blank">ANALYZE WITH GENIE ↗</a></h2><div class="body"></div></section>
+  <section class="card" id="c6"><h2>24-hour market regime forecast <a class="genie" target="_blank">ANALYZE WITH GENIE ↗</a></h2><div class="chart"></div></section>
+  <section class="card" id="c2"><h2>48-hour price curve <a class="genie" target="_blank">ANALYZE WITH GENIE ↗</a></h2><div class="chart"></div></section>
+  <div class="section"><b>Act</b> log a spike alert or a load shift against the forecast</div>
   <section class="card wide" id="c10"><h2>Ops actions: spike alerts and load shifts (Lakebase) <a class="genie" target="_blank">ANALYZE WITH GENIE ↗</a></h2>
     <form id="opsForm">
       <label>Type<select name="action_type"><option value="spike_alert">Spike alert</option><option value="load_shift">Load shift</option></select></label>
@@ -72,6 +92,13 @@
     </form>
     <div class="body"></div>
   </section>
+  <div class="section"><b>Why</b> the supply side behind the price</div>
+  <section class="card wide" id="c11"><h2>Generation outage outlook (AESO daily + monthly reports) <a class="genie" target="_blank">ANALYZE WITH GENIE ↗</a></h2><div class="chart"></div><div class="body"></div></section>
+  <section class="card" id="c3"><h2>Wind + solar generation vs price (7 days) <a class="genie" target="_blank">ANALYZE WITH GENIE ↗</a></h2><div class="chart"></div></section>
+  <section class="card" id="c4"><h2>Peak hour heatmap (90 days) <a class="genie" target="_blank">ANALYZE WITH GENIE ↗</a></h2><div class="chart"></div></section>
+  <div class="section"><b>Check the model</b> how it did on past days</div>
+  <section class="card" id="c8"><h2>Backtest: actual vs predicted <a class="genie" target="_blank">ANALYZE WITH GENIE ↗</a></h2><div class="chart"></div></section>
+  <section class="card" id="c9"><h2>Model accuracy leaderboard <a class="genie" target="_blank">ANALYZE WITH GENIE ↗</a></h2><div class="body"></div></section>
 </main>
 <script>
 const C = { green:"#00d26a", amber:"#ffb000", red:"#ff3b30", blue:"#3d8bfd", muted:"#7d8aa5", text:"#e8edf7", line:"#1c2740" };
@@ -98,6 +125,14 @@ function genieLink(id, prompt) {
   document.querySelector(`#${id} .genie`).href = `${GENIE.host}/one/chat?o=${GENIE.workspace_id}&q=${encodeURIComponent(q)}`;
 }
 
+const pop = () => document.getElementById("c0");
+document.addEventListener("click", e => {
+  const badge = document.getElementById("score");
+  if (badge.contains(e.target)) { const open = pop().classList.toggle("open"); badge.setAttribute("aria-expanded", open); }
+  else if (!pop().contains(e.target)) { pop().classList.remove("open"); badge.setAttribute("aria-expanded", "false"); }
+});
+document.addEventListener("keydown", e => { if (e.key === "Escape") { pop().classList.remove("open"); document.getElementById("score").setAttribute("aria-expanded", "false"); } });
+
 function render({ data, errors, genie }) {
   GENIE = genie;
   const prices = data.prices, fc = data.forecast, last = prices[prices.length - 1];
@@ -107,22 +142,24 @@ function render({ data, errors, genie }) {
   const acc = data.accuracy || [], champ = acc[0]?.champion;
   const avg = name => acc.find(r => r.window_label === "mean of windows" && r.model_name === name);
   const ours = avg(champ), aeso = avg("aeso_forecast"), naive = avg("naive_yesterday");
+  const badge = document.getElementById("score");
   if (ours) {
-    const score = Math.round(ours.capture_pct), grade = score >= 85 ? ["STRONG", C.green] : score >= 70 ? ["FAIR", C.amber] : ["WEAK", C.red];
-    const bar = (name, r, color, note) => r ? `<tr><td style="text-align:left">${name} <span class="muted">${note}</span></td>
-        <td style="width:45%"><div style="background:${color};height:10px;width:${Math.max(0, Math.min(100, r.capture_pct))}%"></div></td>
-        <td>${Math.round(r.capture_pct)}/100</td><td>${money(r.mae)}</td></tr>` : "";
+    const score = Math.round(ours.capture_pct), color = score >= 85 ? C.green : score >= 70 ? C.amber : C.red;
+    const vsAeso = aeso ? Math.round(100 * ours.capture_pct / aeso.capture_pct) : null;
+    badge.innerHTML = `<span class="sdot" style="background:${color}"></span>FORECAST SCORE <b>${score}</b>/100${vsAeso ? ` · ${vsAeso}% of AESO` : ""} ⓘ`;
+    const bar = (name, r, c) => r ? `<tr><td style="text-align:left">${name}</td>
+        <td style="width:40%"><div style="background:${c};height:4px;width:${Math.max(0, Math.min(100, r.capture_pct))}%"></div></td>
+        <td>${Math.round(r.capture_pct)}</td><td class="muted">${money(r.mae)}</td></tr>` : "";
     const windows = acc.filter(r => r.model_name === champ && r.window_label !== "mean of windows")
-                       .map(r => `${r.window_label}: ${Math.round(r.capture_pct)}`).join(" · ");
-    body("c0").innerHTML = `<div class="row"><div style="min-width:200px"><div class="big" style="color:${grade[1]}">${score}<span class="muted" style="font-size:24px">/100</span></div>
-      <div class="num" style="color:${grade[1]}">${grade[0]}</div></div>
-      <div style="flex:1"><p style="margin:0 0 6px">On <b>${ours.n_days} past days</b>, scheduling pumping from this forecast saved <b>$${score} of every $100</b> a perfect forecast would have saved.
-      ${aeso ? `That is <b>${Math.round(100 * ours.capture_pct / aeso.capture_pct)}% as good as AESO's own forecast</b>, which is only published hours ahead; ours is ready the day before.` : ""}</p>
-      <table><tr><th>Forecast</th><th></th><th>Score</th><th>Typical error</th></tr>
-      ${bar("Our forecast", ours, C.green, `(${champ}, day ahead)`)}${bar("AESO's forecast", aeso, C.blue, "(hours ahead)")}${bar("Same hour yesterday", naive, C.muted, "(no model)")}</table>
-      <p class="muted" style="margin:6px 0 0">Score by 14-day window: ${windows}. Typical error = average miss in $/MWh. Backtests use only what was known the day before (published wind forecast, not the wind that blew).</p></div></div>`;
+                       .map(r => `${r.window_label.slice(5, 10)}: ${Math.round(r.capture_pct)}`).join(" · ");
+    body("c0").innerHTML = `<p style="margin:0 0 8px">Over <b>${ours.n_days} past days</b>, scheduling pumping from this forecast saved
+      <b>$${score} of every $100</b> a perfect forecast would have.${vsAeso ? ` That is ${vsAeso}% as good as AESO's forecast, which is only published hours ahead.` : ""}</p>
+      <table><tr><th>Forecast</th><th></th><th>Score</th><th>Typical miss</th></tr>
+      ${bar(`Ours (${champ}, day ahead)`, ours, C.green)}${bar("AESO (hours ahead)", aeso, C.blue)}${bar("Same hour yesterday", naive, C.muted)}</table>
+      <p class="muted" style="margin:8px 0 0">By 14-day window (start date): ${windows}. Uses only what was known the day before.</p>`;
     genieLink("c0", `Our forecast scores ${score}/100 on load-shift capture over ${ours.n_days} backtest days, against ${aeso ? Math.round(aeso.capture_pct) : "--"} for AESO's forecast. Explain in plain terms what this score means, which days it did worst on, and why. Use aeso_backtest_windows and aeso_backtest_detail.`);
   } else {
+    badge.textContent = "FORECAST SCORE --";
     body("c0").innerHTML = `<p class="muted">No re-baseline yet: run the aeso-rebaseline job.</p>`;
   }
 
@@ -226,6 +263,8 @@ function render({ data, errors, genie }) {
                  { x:d, y:daily.map(r => r.hydro), name:"Hydro out", type:"bar", marker:{ color:C.blue } },
                  { x:d, y:daily.map(r => r.other), name:"Storage + other out", type:"bar", marker:{ color:C.muted } }],
          { barmode:"stack", yaxis:{ gridcolor:C.line, title:"MW out" } });
+    const today = daily[0];
+    document.getElementById("outchip").innerHTML = `<span class="sdot" style="background:${today.dispatchable > 2500 ? C.amber : C.muted}"></span>OUT TODAY <b>${today.dispatchable.toLocaleString()}</b> MW`;
     const peak = daily.reduce((a, r) => (r.dispatchable > a.dispatchable ? r : a)), avg = daily.reduce((s, r) => s + r.dispatchable, 0) / daily.length;
     const mPeak = monthly.length ? monthly.reduce((a, r) => (r.dispatchable > a.dispatchable ? r : a)) : null;
     body("c11").innerHTML = `<p class="num" style="margin:4px 0">Next 30 days: <b>${Math.round(avg).toLocaleString()} MW</b> of gas, hydro and storage out on average; most on <b>${peak.period}</b> (${peak.dispatchable.toLocaleString()} MW).
