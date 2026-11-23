@@ -70,6 +70,7 @@ AESO files (forecasts) ─┘     1. ingest notebooks ─► bronze Delta (MERGE
 | `aeso_forecast_history` | gold | forecast notebook (append, every hourly run) | `model_run_timestamp, forecast_datetime_mpt` |
 | `aeso_model_promotions` | gold | `src/ml/evaluate_challenger.py` (append) | `evaluated_at` |
 | `aeso_live_accuracy` | gold | `src/ml/daily_monitor.py` (overwrite) | `view, segment, model_name` |
+| `aeso_backtest_windows` | gold | `src/ml/rebaseline_windows.py` (append; after every promotion, or job `aeso-rebaseline`) | `run_timestamp, window, model_name` |
 | `aeso_price_drivers` | gold | `src/ml/price_drivers.py` (overwrite, daily) | `view, segment` |
 | `aeso_business_value` | gold | `src/ml/business_value.py` | `run_timestamp, scenario` |
 | `ops_actions_history` | gold | Lakebase copy-back task | `action_id` |

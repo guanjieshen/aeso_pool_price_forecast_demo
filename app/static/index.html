@@ -50,6 +50,7 @@
   <span class="updated" id="updated">Updated --</span>
 </header>
 <main>
+  <section class="card wide" id="c0" style="min-height:0"><h2>How accurate is the forecast? (backtest score) <a class="genie" target="_blank">ANALYZE WITH GENIE ↗</a></h2><div class="body"></div></section>
   <section class="card" id="c1"><h2>Pool price right now <a class="genie" target="_blank">ANALYZE WITH GENIE ↗</a></h2><div class="body"></div></section>
   <section class="card" id="c2"><h2>48-hour price curve <a class="genie" target="_blank">ANALYZE WITH GENIE ↗</a></h2><div class="chart"></div></section>
   <section class="card" id="c3"><h2>Wind + solar generation vs price (7 days) <a class="genie" target="_blank">ANALYZE WITH GENIE ↗</a></h2><div class="chart"></div></section>
@@ -99,6 +100,30 @@ function genieLink(id, prompt) {
 function render({ data, errors, genie }) {
   GENIE = genie;
   const prices = data.prices, fc = data.forecast, last = prices[prices.length - 1];
+
+  // 0. Accuracy score for non-specialists. Score = capture rate: of every $100 a perfect forecast would have saved
+  // by moving pumping out of the expensive hours, how many dollars this forecast saved. Day-ahead information only.
+  const acc = data.accuracy || [], champ = acc[0]?.champion;
+  const avg = name => acc.find(r => r.window_label === "mean of windows" && r.model_name === name);
+  const ours = avg(champ), aeso = avg("aeso_forecast"), naive = avg("naive_yesterday");
+  if (ours) {
+    const score = Math.round(ours.capture_pct), grade = score >= 85 ? ["STRONG", C.green] : score >= 70 ? ["FAIR", C.amber] : ["WEAK", C.red];
+    const bar = (name, r, color, note) => r ? `<tr><td style="text-align:left">${name} <span class="muted">${note}</span></td>
+        <td style="width:45%"><div style="background:${color};height:10px;width:${Math.max(0, Math.min(100, r.capture_pct))}%"></div></td>
+        <td>${Math.round(r.capture_pct)}/100</td><td>${money(r.mae)}</td></tr>` : "";
+    const windows = acc.filter(r => r.model_name === champ && r.window_label !== "mean of windows")
+                       .map(r => `${r.window_label}: ${Math.round(r.capture_pct)}`).join(" · ");
+    body("c0").innerHTML = `<div class="row"><div style="min-width:200px"><div class="big" style="color:${grade[1]}">${score}<span class="muted" style="font-size:24px">/100</span></div>
+      <div class="num" style="color:${grade[1]}">${grade[0]}</div></div>
+      <div style="flex:1"><p style="margin:0 0 6px">On <b>${ours.n_days} past days</b>, scheduling pumping from this forecast saved <b>$${score} of every $100</b> a perfect forecast would have saved.
+      ${aeso ? `That is <b>${Math.round(100 * ours.capture_pct / aeso.capture_pct)}% as good as AESO's own forecast</b>, which is only published hours ahead; ours is ready the day before.` : ""}</p>
+      <table><tr><th>Forecast</th><th></th><th>Score</th><th>Typical error</th></tr>
+      ${bar("Our forecast", ours, C.green, `(${champ}, day ahead)`)}${bar("AESO's forecast", aeso, C.blue, "(hours ahead)")}${bar("Same hour yesterday", naive, C.muted, "(no model)")}</table>
+      <p class="muted" style="margin:6px 0 0">Score by 14-day window: ${windows}. Typical error = average miss in $/MWh. Backtests use only what was known the day before (published wind forecast, not the wind that blew).</p></div></div>`;
+    genieLink("c0", `Our forecast scores ${score}/100 on load-shift capture over ${ours.n_days} backtest days, against ${aeso ? Math.round(aeso.capture_pct) : "--"} for AESO's forecast. Explain in plain terms what this score means, which days it did worst on, and why. Use aeso_backtest_windows and aeso_backtest_detail.`);
+  } else {
+    body("c0").innerHTML = `<p class="muted">No re-baseline yet: run the aeso-rebaseline job.</p>`;
+  }
 
   // 1. Pool price right now
   if (last) {

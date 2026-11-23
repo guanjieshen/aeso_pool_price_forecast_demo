@@ -92,6 +92,7 @@ Every step is in the product today: alerts and shifts are written to **Lakebase*
 
 - The **regime model matters**: plain Prophet chased spikes (MAE 44.53); removing Spike hours cut it to 30.36.
 - **Fundamentals beat more curve-fitting:** a model of price on the supply cushion, used only when the cushion is thin, was submitted as a challenger and promoted on the same 14 days (capture **73.1% to 80.3%**, MAE **31.79 to 27.37**). A Prophet-only tweak was rejected the same day.
+- **Across three 14-day windows** (day-ahead information only): our forecast scores **87 out of 100** on load-shift capture, against 92 for AESO's hours-ahead forecast and 35 for same-hour-yesterday. The old champion scored 77.
 - **No look-ahead:** we re-scored the old champion when we found the backtest was seeing the real wind; on the published wind forecast its capture is 73.1% on Oct 18 to 31, not the 90.2% it showed on a quiet window with the real wind.
 
 ---

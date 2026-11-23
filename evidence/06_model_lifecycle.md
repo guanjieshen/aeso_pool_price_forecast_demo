@@ -1,6 +1,6 @@
 # Self-improving models: weekly challenger, model update trigger, gated promotion
 
-Exported 2026-11-23 19:23 UTC by `scripts/export_evidence.py` from the live workspace. Full cell output regenerates into the git-ignored `evidence/raw/`.
+Exported 2026-11-23 19:57 UTC by `scripts/export_evidence.py` from the live workspace. Full cell output regenerates into the git-ignored `evidence/raw/`.
 
 ## Task `train_challenger` (job `aeso-weekly-retrain`)
 
@@ -57,6 +57,33 @@ PROMOTE: capture 80.3% vs 73.1% (needs +1.0 pp: yes); MAE 27.37 vs 31.79 (guard 
 2026-11-23 19:13:49                5                  7      promoted           73.1           80.3      31.79      27.37
 ```
 
+## Task `rebaseline_windows` (job `aeso-rebaseline`)
+
+Job run `926231304984930` · task run `1030184203973074` · **SUCCESS** · 242s · full output `evidence/raw/aeso-rebaseline__rebaseline_windows.md` (local)
+
+```text
+5 -> v5: {"fundamentals_gate": null, "n_paths": 500, "prophet_cps": 0.05, "regime_cps": 0.001, "regressors": ["wind_solar_mw"], "weight_high": 1.0, "weight_low": 0.7}
+champion -> v7: {"fundamentals_gate": [1000, 2500], "n_paths": 500, "prophet_cps": 0.05, "regime_cps": 0.001, "regressors": ["wind_solar_mw"], "weight_high": 1.0, "weight_low": 0.7}
+
+window      model_name  capture_rate_pct  mae_cad_mwh  n_days hours_above_100
+2026-10-18..2026-10-31   aeso_forecast             91.04        16.24      14              25
+2026-10-18..2026-10-31              v7             80.34        27.37      14              25
+2026-10-18..2026-10-31              v5             73.06        31.79      14              25
+2026-10-18..2026-10-31 naive_yesterday             22.96        59.85      14              25
+2026-08-20..2026-09-02   aeso_forecast             89.55        28.12      14              31
+2026-08-20..2026-09-02              v7             87.28        46.86      14              31
+2026-08-20..2026-09-02              v5             79.40        53.60      14              31
+2026-08-20..2026-09-02 naive_yesterday             32.14        80.65      14              31
+2026-05-15..2026-05-28   aeso_forecast             94.37        12.07      14              24
+2026-05-15..2026-05-28              v7             94.17        54.37      14              24
+2026-05-15..2026-05-28 naive_yesterday             48.73        57.06      14              24
+2026-05-15..2026-05-28              v5             77.65        59.75      14              24
+       mean of windows   aeso_forecast             91.65        18.81      42            None
+       mean of windows naive_yesterday             34.61        65.85      42            None
+       mean of windows              v5             76.70        48.38      42            None
+       mean of windows              v7             87.26        42.86      42            None
+```
+
 ## Query: Promotion decisions
 
 | evaluated_at | champion_version | challenger_version | decision | champ_capture | chall_capture | champ_mae | chall_mae | eval_start | eval_end |
@@ -71,4 +98,4 @@ PROMOTE: capture 80.3% vs 73.1% (needs +1.0 pp: yes); MAE 27.37 vs 31.79 (guard 
 |---|---|---|---|---|
 | 4 | 1 | 24 | 2026-11-23T15:51:44.000Z | 2026-11-23T15:51:44.000Z |
 | 5 | 6 | 144 | 2026-11-23T16:02:32.000Z | 2026-11-23T18:36:17.000Z |
-| 7 | 1 | 24 | 2026-11-23T19:18:57.000Z | 2026-11-23T19:18:57.000Z |
+| 7 | 2 | 48 | 2026-11-23T19:18:57.000Z | 2026-11-23T19:25:07.000Z |

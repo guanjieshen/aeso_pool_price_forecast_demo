@@ -6,6 +6,7 @@ A FastAPI backend (`app/app.py`) and one page (`app/static/index.html`, Plotly.j
 
 | # | Card | Feed | Source | Filter |
 | --- | --- | --- | --- | --- |
+| 0 | Accuracy score (wide, top) | `accuracy` | Warehouse: `aeso_backtest_windows` | Latest re-baseline run: champion's mean capture over three 14-day windows as a 0 to 100 score (STRONG ≥ 85, FAIR ≥ 70), vs AESO and same hour yesterday, typical error = MAE. Refreshed after every promotion by `rebaseline_windows.py` |
 | 1 | Pool price right now | `prices` | **Lakebase** `aeso_price_forecast.pool_price_hourly_synced` | Latest non-null `pool_price` |
 | 2 | 48-hour price curve | `prices` | Lakebase | Last 48 settled rows |
 | 3 | Wind + solar vs price (7 days) | `wind` | Warehouse: `aeso_pool_price` x `silver_wind_solar_hourly` | `DATE_TRUNC('hour', ...)` join |

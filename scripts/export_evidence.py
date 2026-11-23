@@ -53,7 +53,8 @@ UNION ALL SELECT 'aeso_wind_solar_forecast', COUNT(*), MIN(forecast_transaction_
         ("Ops actions copied back to Delta (written by the app into Lakebase)", f"SELECT action_id, action_type, window_start_mpt, window_end_mpt, mw, threshold, note FROM {FQ}.ops_actions_history ORDER BY action_id"),
         ("Synced tables registered in Unity Catalog", f"SELECT table_name, table_type, comment FROM energy_canada_demos_catalog.information_schema.tables WHERE table_schema = 'aeso_price_forecast' AND table_name LIKE '%_synced'")]),
     "06_model_lifecycle.md": ("Self-improving models: weekly challenger, model update trigger, gated promotion", [
-        ("aeso-weekly-retrain", "train_challenger"), ("aeso-evaluate-challenger", "evaluate_and_promote")], [
+        ("aeso-weekly-retrain", "train_challenger"), ("aeso-evaluate-challenger", "evaluate_and_promote"),
+        ("aeso-rebaseline", "rebaseline_windows")], [
         ("Promotion decisions", f"SELECT evaluated_at, champion_version, challenger_version, decision, ROUND(champion_capture_rate_pct,1) AS champ_capture, ROUND(challenger_capture_rate_pct,1) AS chall_capture, ROUND(champion_mae_cad_mwh,2) AS champ_mae, ROUND(challenger_mae_cad_mwh,2) AS chall_mae, eval_start, eval_end FROM {FQ}.aeso_model_promotions ORDER BY evaluated_at"),
         ("Hourly forecasts archived per champion version (live accuracy input)", f"SELECT champion_version, COUNT(DISTINCT model_run_timestamp) AS runs, COUNT(*) AS forecast_hours, MIN(model_run_timestamp) AS first_run_utc, MAX(model_run_timestamp) AS last_run_utc FROM {FQ}.aeso_forecast_history GROUP BY 1 ORDER BY 1")]),
     "07_fundamentals.md": ("Fundamentals: supply cushion drivers, day-ahead (as-known) features, snapshot archive", [

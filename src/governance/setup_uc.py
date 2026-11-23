@@ -28,6 +28,7 @@ TABLES = {
     "aeso_fundamentals_snapshots": ("bronze", "data_engineering", "aeso_api_public"),
     "silver_supply_demand_hourly": ("silver", "data_engineering", "derived"),
     "aeso_price_drivers": ("gold", "analytics", "derived"),
+    "aeso_backtest_windows": ("gold", "machine_learning", "model_output"),
     "silver_pool_price_hourly": ("silver", "data_engineering", "derived"),
     "silver_wind_solar_hourly": ("silver", "data_engineering", "derived"),
     "gold_price_features_hourly": ("gold", "analytics", "derived"),

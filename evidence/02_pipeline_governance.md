@@ -1,10 +1,10 @@
 # Declarative pipeline (silver/gold, expectations) and Unity Catalog governance
 
-Exported 2026-11-23 19:23 UTC by `scripts/export_evidence.py` from the live workspace. Full cell output regenerates into the git-ignored `evidence/raw/`.
+Exported 2026-11-23 19:56 UTC by `scripts/export_evidence.py` from the live workspace. Full cell output regenerates into the git-ignored `evidence/raw/`.
 
 ## Task `governance` (job `aeso-hourly`)
 
-Job run `362081059053813` · task run `488948664773368` · **SUCCESS** · 30s · full output `evidence/raw/aeso-hourly__governance.md` (local)
+Job run `236020044237964` · task run `328819965390991` · **SUCCESS** · 30s · full output `evidence/raw/aeso-hourly__governance.md` (local)
 
 ```text
 tagged table: aeso_pool_price layer=bronze data_product=data_engineering source=aeso_api_public
@@ -14,7 +14,7 @@ tagged table: aeso_supply_demand_hourly layer=bronze data_product=data_engineeri
 tagged table: aeso_wind_solar_published layer=bronze data_product=data_engineering source=aeso_csv_public
 tagged table: aeso_fundamentals_snapshots layer=bronze data_product=data_engineering source=aeso_api_public
 tagged materialized view: silver_supply_demand_hourly layer=silver data_product=data_engineering source=derived
-skip (not created yet): aeso_price_drivers
+tagged table: aeso_price_drivers layer=gold data_product=analytics source=derived
 tagged materialized view: silver_pool_price_hourly layer=silver data_product=data_engineering source=derived
 tagged materialized view: silver_wind_solar_hourly layer=silver data_product=data_engineering source=derived
 tagged materialized view: gold_price_features_hourly layer=gold data_product=analytics source=derived
@@ -35,6 +35,7 @@ table_name tag_name tag_value
 aeso_fundamentals_snapshots    layer    bronze
       aeso_model_promotions    layer      gold
             aeso_pool_price    layer    bronze
+         aeso_price_drivers    layer      gold
  aeso_price_forecast_output    layer      gold
   aeso_supply_demand_hourly    layer    bronze
    aeso_wind_solar_forecast    layer    bronze
@@ -51,7 +52,7 @@ silver_supply_demand_hourly    layer    silver
     <user>              MANAGE    CATALOG                     energy_canada_demos_catalog
 ce289c66-8347-4eea-a427-6b4f20fe6b76          USE SCHEMA     SCHEMA energy_canada_demos_catalog.aeso_price_forecast
                     energy-canada-sa              MANAGE    CATALOG                     energy_canada_demos_catalog
-                    energy-canada-sa              MODIFY    CATALOG                     energy_canada_demos_catal
+                    energy-
 ```
 
 ## Query: Wind/solar regressor source (how much is imputed)
@@ -67,7 +68,7 @@ ce289c66-8347-4eea-a427-6b4f20fe6b76          USE SCHEMA     SCHEMA energy_canad
 
 | rows | settled | first_mpt | last_mpt | imputed_hours |
 |---|---|---|---|---|
-| 8004 | 7835 | 2026-01-01T00:00:00.000Z | 2026-11-30T11:00:00.000Z | 1 |
+| 8004 | 7836 | 2026-01-01T00:00:00.000Z | 2026-11-30T11:00:00.000Z | 1 |
 
 ## Query: Governed tags per table
 
@@ -94,6 +95,9 @@ ce289c66-8347-4eea-a427-6b4f20fe6b76          USE SCHEMA     SCHEMA energy_canad
 | aeso_pool_price | data_product | data_engineering |
 | aeso_pool_price | domain | operations |
 | aeso_pool_price | layer | bronze |
+| aeso_price_drivers | data_product | analytics |
+| aeso_price_drivers | domain | operations |
+| aeso_price_drivers | layer | gold |
 | aeso_price_forecast_output | data_product | machine_learning |
 | aeso_price_forecast_output | domain | operations |
 | aeso_price_forecast_output | layer | gold |
@@ -139,6 +143,6 @@ ce289c66-8347-4eea-a427-6b4f20fe6b76          USE SCHEMA     SCHEMA energy_canad
 | energy_canada_demos_catalog.aeso_price_forecast.aeso_wind_solar_forecast | energy_canada_demos_catalog.aeso_price_forecast.silver_wind_solar_hourly | PIPELINE |
 | energy_canada_demos_catalog.aeso_price_forecast.aeso_wind_solar_metered | energy_canada_demos_catalog.aeso_price_forecast.silver_wind_solar_hourly | PIPELINE |
 | energy_canada_demos_catalog.aeso_price_forecast.aeso_wind_solar_published | energy_canada_demos_catalog.aeso_price_forecast.silver_supply_demand_hourly | PIPELINE |
-| energy_canada_demos_catalog.aeso_price_forecast.silver_pool_price_hourly | energy_canada_demos_catalog.aeso_price_forecast.gold_price_features_hourly |
+| energy_canada_demo
 
 (truncated; full output in evidence/raw/ after a local export)

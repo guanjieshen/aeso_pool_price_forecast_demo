@@ -116,6 +116,12 @@ QUERIES = {
         FROM {FQ}.aeso_backtest_metrics
         WHERE run_timestamp = (SELECT MAX(run_timestamp) FROM {FQ}.aeso_backtest_metrics)
         ORDER BY mae_cad_mwh ASC LIMIT 3"""),
+    # 0: plain-language accuracy score: the champion re-scored on several 14-day windows (rebaseline_windows.py)
+    "accuracy": ("dbsql", f"""
+        SELECT `window` AS window_label, model_name, ROUND(capture_rate_pct, 1) AS capture_pct, ROUND(mae_cad_mwh, 2) AS mae,
+               n_days, (SELECT CONCAT('v', MAX_BY(champion_version, run_timestamp)) FROM {FQ}.aeso_backtest_metrics) AS champion
+        FROM {FQ}.aeso_backtest_windows
+        WHERE run_timestamp = (SELECT MAX(run_timestamp) FROM {FQ}.aeso_backtest_windows)"""),
     # ops actions written by this app
     "actions": ("pg", f"""
         SELECT action_id, {PG_TS.format('created_at')} AS created_utc, created_by, action_type,

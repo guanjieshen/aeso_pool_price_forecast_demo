@@ -27,6 +27,8 @@ How the forecast notebook and its models work. The method is in `src/ml/forecast
 | `aeso-evaluate-challenger` | **Model update trigger**: `MODEL_ALIAS_SET` on `pool_price_ensemble`, alias `challenger` | `evaluate_challenger.py`: walk-forward on the same last 14 days for both recipes; promote if capture +1 pp **and** MAE ≤ 1.05x; log to `aeso_model_promotions`; rewrite the backtest tables for the resulting champion; then business value and governance |
 | `aeso-daily-monitor` | 06:45 MPT | `daily_monitor.py`: score archived forecasts once prices settle (`aeso_live_accuracy`); fail the job (email) if live MAE > 1.5x the champion's evaluation MAE. `price_drivers.py`: explained variance per fundamental and price by cushion band (`aeso_price_drivers`) |
 
+**Re-baseline on several windows:** `rebaseline_windows.py` scores versions on the latest covered 14 days plus Aug 20 and May 15 windows (`aeso_backtest_windows`; the app's accuracy score). It runs after every evaluation for `@champion`; `databricks bundle run aeso_rebaseline --params versions=5,champion` compares any versions.
+
 **A model version is a recipe plus its fit.** The config (`regime_cps`, `weight_low`, `weight_high`, `prophet_cps`, `n_paths`, `regressors`, `fundamentals_gate`) is stored as the version tag `config`; versions without it mean the defaults in `forecast_lib.DEFAULT_CONFIG`. Evaluation compares recipes walk-forward (retrain at every cutoff), which is the honest test for time series.
 
 **Submitting your own challenger:** `databricks bundle run aeso_weekly_retrain --params candidate=<grid name>`, or register a version with a `config` tag (`ensemble_model.register`) and set the `challenger` alias. The trigger does the rest. Never set `@champion` by hand except to roll back.

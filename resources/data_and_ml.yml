@@ -135,9 +135,18 @@ resources:
             - task_key: evaluate_and_promote
           notebook_task:
             notebook_path: ../src/ml/business_value.py
+        - task_key: rebaseline           # refresh the multi-window score the app shows, for the resulting champion
+          depends_on:
+            - task_key: evaluate_and_promote
+          notebook_task:
+            notebook_path: ../src/ml/rebaseline_windows.py
+            base_parameters:
+              versions: champion
+              windows: latest,2026-08-20,2026-05-15
         - task_key: governance
           depends_on:
             - task_key: business_value
+            - task_key: rebaseline
           notebook_task:
             notebook_path: ../src/governance/setup_uc.py
 
@@ -164,3 +173,20 @@ resources:
         - task_key: price_drivers          # what drives the price: explained variance per fundamental (Genie, evidence)
           notebook_task:
             notebook_path: ../src/ml/price_drivers.py
+    aeso_rebaseline:
+      name: aeso-rebaseline
+      description: Score registered versions walk-forward on several 14-day windows, day-ahead features only (manual).
+      max_concurrent_runs: 1
+      parameters:
+        - name: catalog
+          default: ${var.catalog}
+        - name: schema
+          default: ${var.schema}
+        - name: versions
+          default: "5,champion"
+        - name: windows
+          default: "latest,2026-08-20,2026-05-15"
+      tasks:
+        - task_key: rebaseline_windows
+          notebook_task:
+            notebook_path: ../src/ml/rebaseline_windows.py

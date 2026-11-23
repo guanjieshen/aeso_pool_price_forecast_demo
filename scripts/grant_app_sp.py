@@ -13,7 +13,7 @@ import psycopg
 from databricks.sdk import WorkspaceClient
 
 APP_TABLES = ["aeso_pool_price", "silver_wind_solar_hourly", "aeso_price_forecast_output",
-              "aeso_backtest_metrics", "aeso_backtest_detail"]
+              "aeso_backtest_metrics", "aeso_backtest_detail", "aeso_backtest_windows"]
 ENDPOINT = "projects/aeso-market-pulse/branches/production/endpoints/primary"
 
 

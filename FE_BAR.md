@@ -21,7 +21,7 @@ Power is the **largest operating cost** for a liquids pipeline. Its Alberta pump
 | **ML** | 3-state HMM + Prophet + Monte Carlo, converged, ensemble, plus a **supply-cushion fundamentals model** for thin-cushion hours; walk-forward backtest on **day-ahead (as-known) features**; MLflow; UC model `pool_price_ensemble@champion` | `src/ml/` | ✅ |
 | **ML lifecycle** | **Self-improving:** weekly challenger, **model update trigger** on `@challenger`, gated promotion on capture rate, forecast archive + daily drift monitor | `src/ml/train_challenger.py`, `evaluate_challenger.py`, `daily_monitor.py` | ✅ |
 | **Lakebase** | Synced tables for the app's live cards + `ops_actions` write-back | `resources/serving.yml`, `src/lakebase/` | ✅ |
-| **App** | AESO Market Pulse (FastAPI + Plotly.js), 9 cards + ops action form | `app/`, `resources/serving.yml` | ✅ |
+| **App** | AESO Market Pulse (FastAPI + Plotly.js), a plain-language accuracy score, 9 cards + ops action form | `app/`, `resources/serving.yml` | ✅ |
 | **Genie** | Genie space with instructions and a scored benchmark; screen-aware "Analyze with Genie" links into Genie One | `src/genie/`, `scripts/genie_benchmark.py` | ✅ |
 
 ## Results (real runs, see `evidence/`)
@@ -30,7 +30,7 @@ Power is the **largest operating cost** for a liquids pipeline. Its Alberta pump
 
 **What drives the price.** Alberta clears the cheapest offers first, so the price follows the **supply cushion** (available gas, hydro and storage + wind/solar + intertie imports - forecast load). It explains **24.0% of 2026 price variance and 17.9% of spike variance**, against 12.2% and 5.7% for wind alone; hours under 2,000 MW of cushion are **6.1% of hours but 78% of spike hours** ([07](evidence/07_fundamentals.md)). Outages, load or capability on their own explain about 1 to 2%.
 
-**No look-ahead.** Backtests feed the test day only what was known before it began: AESO's **published wind/solar forecast** (MAE 364 MW against actuals) and the cushion built from it, never the realised wind. Each hourly run also archives the forward fundamentals as published, so this holds after AESO's monthly file ends ([07](evidence/07_fundamentals.md)). Re-scored this way on the latest 14 days with published forecasts (Oct 18 to 31), the previous champion v5 captured **73.1%**, not the 90.2% it showed on a quiet window with realised wind.
+**No look-ahead.** Backtests feed the test day only what was known before it began: AESO's **published wind/solar forecast** (MAE 364 MW against actuals) and the cushion built from it, never the realised wind. Each hourly run also archives the forward fundamentals as published, so this holds after AESO's monthly file ends ([07](evidence/07_fundamentals.md)). Re-scored this way, the previous champion v5 averages **76.7% capture over three 14-day windows** (73.1% on the latest, Oct 18 to 31), not the 90.2% it showed on a quiet window with realised wind. The current champion v7 averages **87.3%**, against 91.7% for AESO's hours-ahead forecast ([06](evidence/06_model_lifecycle.md)).
 
 **The models improve themselves.** Every Monday a challenger recipe is tuned on an earlier window and registered as `@challenger`; the **model update trigger** backtests it against `@champion` on the same days and promotes it only if it captures more load-shift value without worse accuracy. The supply-cushion recipe (v7) was promoted over v5 on Oct 18 to 31: capture **73.1% to 80.3%**, MAE **31.79 to 27.37**. A Prophet-only tweak (v6) was rejected the same day ([06](evidence/06_model_lifecycle.md)).
 

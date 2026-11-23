@@ -1,10 +1,10 @@
 # Ingest: AESO API + CSV into bronze Delta (Lakeflow Job tasks)
 
-Exported 2026-11-23 19:23 UTC by `scripts/export_evidence.py` from the live workspace. Full cell output regenerates into the git-ignored `evidence/raw/`.
+Exported 2026-11-23 19:56 UTC by `scripts/export_evidence.py` from the live workspace. Full cell output regenerates into the git-ignored `evidence/raw/`.
 
 ## Task `ingest_pool_price` (job `aeso-hourly`)
 
-Job run `362081059053813` · task run `1084655225099105` · **SUCCESS** · 35s · full output `evidence/raw/aeso-hourly__ingest_pool_price.md` (local)
+Job run `236020044237964` · task run `889450479508590` · **SUCCESS** · 77s · full output `evidence/raw/aeso-hourly__ingest_pool_price.md` (local)
 
 ```text
 ERROR: pip's dependency resolver does not currently take into account all the packages that are installed. This behaviour is the source of the following dependency conflicts.
@@ -16,15 +16,15 @@ Last loaded MPT date: 2026-11-23  ->  fetching 2026-11-23 .. 2026-11-23
 
 2026-11-23 .. 2026-11-23: 16 rows
 
-MERGE: {'num_affected_rows': 16, 'num_updated_rows': 15, 'num_deleted_rows': 0, 'num_inserted_rows': 1}
+MERGE: {'num_affected_rows': 16, 'num_updated_rows': 16, 'num_deleted_rows': 0, 'num_inserted_rows': 0}
 
 total_rows  settled_hours first_hour_mpt       last_hour_mpt  avg_price_cad_mwh  max_price_cad_mwh
-       7839           7835     2026-01-01 2026-11-23 15:00:00              33.72             999.99
+       7839           7836     2026-01-01 2026-11-23 15:00:00              33.72             999.99
 ```
 
 ## Task `ingest_wind_solar_forecast` (job `aeso-hourly`)
 
-Job run `362081059053813` · task run `227673156037068` · **SUCCESS** · 36s · full output `evidence/raw/aeso-hourly__ingest_wind_solar_forecast.md` (local)
+Job run `236020044237964` · task run `377702619067631` · **SUCCESS** · 79s · full output `evidence/raw/aeso-hourly__ingest_wind_solar_forecast.md` (local)
 
 ```text
 Parsed 215 rows from http://ets.aeso.ca/Market/Reports/Manual/Operations/prodweb_reports/wind_solar_forecast/windsolar_rpt_longterm.csv
@@ -48,7 +48,7 @@ forecast_transaction_date  min_mw  most_likely_mw  max_mw  actual_mw  mcr_mw  pc
 
 ## Task `ingest_wind_solar_metered` (job `aeso-hourly`)
 
-Job run `362081059053813` · task run `63475109935593` · **SUCCESS** · 35s · full output `evidence/raw/aeso-hourly__ingest_wind_solar_metered.md` (local)
+Job run `236020044237964` · task run `607428349353479` · **SUCCESS** · 79s · full output `evidence/raw/aeso-hourly__ingest_wind_solar_metered.md` (local)
 
 ```text
 Wind assets: 50, solar assets: 49
