@@ -1,10 +1,10 @@
 # Declarative pipeline (silver/gold, expectations) and Unity Catalog governance
 
-Exported 2026-11-23 20:25 UTC by `scripts/export_evidence.py` from the live workspace. Full cell output regenerates into the git-ignored `evidence/raw/`.
+Exported 2026-11-23 21:54 UTC by `scripts/export_evidence.py` from the live workspace. Full cell output regenerates into the git-ignored `evidence/raw/`.
 
 ## Task `governance` (job `aeso-hourly`)
 
-Job run `507774967868631` · task run `25562558344056` · **SUCCESS** · 33s · full output `evidence/raw/aeso-hourly__governance.md` (local)
+Job run `338879449112685` · task run `131127098169310` · **SUCCESS** · 33s · full output `evidence/raw/aeso-hourly__governance.md` (local)
 
 ```text
 tagged table: aeso_pool_price layer=bronze data_product=data_engineering source=aeso_api_public
@@ -69,7 +69,7 @@ silver_supply_demand_hourly    layer    silver
 
 | rows | settled | first_mpt | last_mpt | imputed_hours |
 |---|---|---|---|---|
-| 8006 | 7837 | 2026-01-01T00:00:00.000Z | 2026-11-30T13:00:00.000Z | 1 |
+| 8006 | 7838 | 2026-01-01T00:00:00.000Z | 2026-11-30T13:00:00.000Z | 1 |
 
 ## Query: Governed tags per table
 
@@ -148,6 +148,6 @@ silver_supply_demand_hourly    layer    silver
 | energy_canada_demos_catalog.aeso_price_forecast.aeso_supply_demand_hourly | energy_canada_demos_catalog.aeso_price_forecast.silver_supply_demand_hourly | PIPELINE |
 | energy_canada_demos_catalog.aeso_price_forecast.aeso_wind_solar_forecast | energy_canada_demos_catalog.aeso_price_forecast.aeso_fundamentals_snapshots | JOB |
 | energy_canada_demos_catalog.aeso_price_forecast.aeso_wind_solar_forecast | energy_canada_demos_catalog.aeso_price_forecast.silver_wind_solar_hourly | PIPELINE |
-| energy_canada_demos_catalog.aeso_price_forecast.aeso_w
+| energy_canada_demos_catalog.aeso_price_forecast.aeso_
 
 (truncated; full output in evidence/raw/ after a local export)

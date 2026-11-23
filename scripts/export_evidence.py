@@ -23,7 +23,7 @@ ROOT = Path(__file__).resolve().parents[1]
 EVIDENCE = ROOT / "evidence"
 FQ = "energy_canada_demos_catalog.aeso_price_forecast"
 ANSI = re.compile(r"\x1b\[[0-9;]*m")
-NOISE = re.compile(r"Downloading artifacts|Uploading artifacts|widget-view|View Logged Model|Validating input example|already exists. Creating|cmdstanpy|Importing plotly|FutureWarning|you may need to restart the kernel|^\s*\S+ = .*groupby|include_groups|UserWarning|pd.read_sql")
+NOISE = re.compile(r"Downloading artifacts|Uploading artifacts|widget-view|View Logged Model|Validating input example|already exists. Creating|cmdstanpy|Importing plotly|FutureWarning|you may need to restart the kernel|^\s*\S+ = .*groupby|include_groups|UserWarning|pd.read_sql|dependency resolver|requires [a-z0-9_.-]+[<>=]|but you have")
 MAX_CHARS = 8800
 EMAIL = re.compile(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}")   # public repo: never publish people's emails
 
@@ -33,7 +33,7 @@ def redact(text: str) -> str:
 
 # Curated file -> (title, [(job name, task key)], [(label, SQL)])
 SECTIONS = {
-    "01_ingest.md": ("Ingest: AESO API + CSV into bronze Delta (Lakeflow Job tasks)", [
+    "01_ingest.md": ("Lakeflow: Jobs (ingest, orchestration) and the Spark Declarative Pipeline, as deployed and run", [
         ("aeso-hourly", "ingest_pool_price"), ("aeso-hourly", "ingest_wind_solar_forecast"),
         ("aeso-hourly", "ingest_wind_solar_metered"), ("aeso-hourly", "ingest_outage_outlook")], [
         ("Bronze coverage", f"""SELECT 'aeso_pool_price' AS table_name, COUNT(*) AS rows, MIN(begin_datetime_mpt) AS first_mpt, MAX(begin_datetime_mpt) AS last_mpt FROM {FQ}.aeso_pool_price
@@ -79,6 +79,46 @@ def app_capture(w: WorkspaceClient) -> str:
     for name, rows in d["data"].items():
         first = json.dumps(rows[0], default=str)[:230] if rows else ""
         lines.append(f"| {name} | {'Lakebase' if name in ('prices', 'forecast', 'actions') else 'SQL warehouse'} | {len(rows)} | `{first}` |")
+    return "\n".join(lines)
+
+
+def lakeflow_capture(w: WorkspaceClient, warehouse_id: str) -> str:
+    """The Lakeflow build as deployed: every job's trigger and task graph, the latest hourly run's task states,
+    and the declarative pipeline's definition, latest update and expectation results (from its event log)."""
+    lines = ["### Lakeflow Jobs (deployed definitions, Jobs API)", "", "| Job | Trigger | Tasks (depends on) |", "|---|---|---|"]
+    for name in ("aeso-hourly", "aeso-weekly-retrain", "aeso-evaluate-challenger", "aeso-daily-monitor", "aeso-rebaseline"):
+        job = next(iter(w.jobs.list(name=name)), None)
+        if not job:
+            continue
+        st = w.jobs.get(job.job_id).settings
+        trig = (f"cron `{st.schedule.quartz_cron_expression}` {st.schedule.timezone_id}" if st.schedule else
+                f"model update trigger on `{st.trigger.model.aliases}`" if st.trigger and st.trigger.model else "manual")
+        tasks = []
+        for t in st.tasks:
+            kind = "pipeline" if t.pipeline_task else "notebook"
+            deps = ",".join(d.task_key for d in (t.depends_on or []))
+            tasks.append(f"{t.task_key} [{kind}]" + (f" ({deps})" if deps else ""))
+        lines.append(f"| `{name}` | {trig} | {'; '.join(tasks)} |")
+    run = latest_success(w, "aeso-hourly")
+    lines += ["", f"### Latest successful `aeso-hourly` run `{run.run_id}`", "", "| Task | Result | Seconds |", "|---|---|---|"]
+    for t in sorted(run.tasks, key=lambda t: t.start_time or 0):
+        secs = (t.end_time - t.start_time) // 1000 if t.end_time and t.start_time else ""
+        lines.append(f"| {t.task_key} | {t.state.result_state.value if t.state and t.state.result_state else ''} | {secs} |")
+    pipe = next(p for p in w.pipelines.list_pipelines(filter="name LIKE 'aeso-transform'"))
+    spec = w.pipelines.get(pipe.pipeline_id).spec
+    upd = next(iter(w.pipelines.list_updates(pipe.pipeline_id, max_results=1).updates))
+    lines += ["", "### Lakeflow Spark Declarative Pipeline `aeso-transform`", "",
+              f"Serverless: {spec.serverless} · channel {spec.channel} · target `{spec.catalog}.{spec.schema}` · source "
+              f"`{', '.join(l.file.path.split('/files/')[-1] for l in spec.libraries if l.file)}` · latest update `{upd.update_id}`: "
+              f"**{upd.state.value if upd.state else ''}** (created {time.strftime('%Y-%m-%d %H:%M UTC', time.gmtime(upd.creation_time / 1000))})", "",
+              "Expectations on the latest update (pipeline event log):", "",
+              query(w, warehouse_id, f"""SELECT e.dataset, e.name AS expectation, e.passed_records, e.failed_records
+                  FROM (SELECT explode(from_json(details:flow_progress.data_quality.expectations,
+                        'array<struct<name:string,dataset:string,passed_records:bigint,failed_records:bigint>>')) AS e
+                        FROM event_log('{pipe.pipeline_id}')
+                        WHERE event_type = 'flow_progress' AND origin.update_id = '{upd.update_id}'
+                          AND details:flow_progress.data_quality.expectations IS NOT NULL)
+                  ORDER BY 1, 2""")]
     return "\n".join(lines)
 
 
@@ -153,6 +193,8 @@ def main() -> None:
             continue
         body = [f"# {title}", "", f"Exported {time.strftime('%Y-%m-%d %H:%M UTC', time.gmtime())} by `scripts/export_evidence.py` "
                 "from the live workspace. Full cell output regenerates into the git-ignored `evidence/raw/`.", ""]
+        if name == "01_ingest.md":
+            body += ["## Lakeflow build as deployed", "", lakeflow_capture(w, args.warehouse_id), ""]
         for job_name, task_key in tasks:
             run = runs.setdefault(job_name, latest_success(w, job_name))
             task = next(t for t in run.tasks if t.task_key == task_key)

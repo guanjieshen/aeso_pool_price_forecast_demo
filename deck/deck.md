@@ -43,7 +43,9 @@ Aligned to the Energy outcome map: **Connected Midstream** (optimize pipeline op
 
 ---
 
-## For the executive sponsor: what it is worth
+## For the VP Operations, Liquids Pipelines: power cost per barrel
+
+**The metric it moves:** power cost per barrel delivered, and operating cost against budget. Power is the largest line in both.
 
 | Flexible load | Perfect-foresight ceiling (2026 to date) | At 80.3% capture (current champion model) |
 | --- | --- | --- |
