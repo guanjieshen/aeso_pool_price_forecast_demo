@@ -23,4 +23,4 @@ Each app card's **ANALYZE WITH GENIE** link opens Genie One with a question alre
 
 `https://<host>/one/chat?o=<workspace-id>&q=<url-encoded prompt>`
 
-`genieLink(cardId, prompt)` in `app/static/index.html` builds it. Prompts carry what is on screen (the price, the hour, the spike hours, the backtest day) and always end with the schema, units and time convention. There is no custom chat UI to maintain, and people get the native, governed Genie experience. The pattern is a field tip, not a documented API: check the link still pre-fills after a Databricks release.
+`genieLink(cardId, prompt)` in `app/static/index.html` builds it. Prompts carry what is on screen (the price, the hour, the spike hours, the backtest day) and always end with the schema, units and time convention. There is no custom chat UI to maintain, and people get the native, governed Genie experience. The pattern is a field tip, not a documented API. Verified by hand on 2026-11-22 (the link opens Genie One with the question filled in); check again after a Databricks release.
