@@ -1,6 +1,6 @@
 # Lakeflow: Jobs (ingest, orchestration) and the Spark Declarative Pipeline, as deployed and run
 
-Exported 2026-11-23 21:54 UTC by `scripts/export_evidence.py` from the live workspace. Full cell output regenerates into the git-ignored `evidence/raw/`.
+Exported 2026-11-23 23:25 UTC by `scripts/export_evidence.py` from the live workspace. Full cell output regenerates into the git-ignored `evidence/raw/`.
 
 ## Lakeflow build as deployed
 
@@ -14,112 +14,94 @@ Exported 2026-11-23 21:54 UTC by `scripts/export_evidence.py` from the live work
 | `aeso-daily-monitor` | cron `0 45 6 * * ?` America/Edmonton | live_accuracy_and_drift [notebook]; price_drivers [notebook] |
 | `aeso-rebaseline` | manual | rebaseline_windows [notebook] |
 
-### Latest successful `aeso-hourly` run `338879449112685`
+### Latest successful `aeso-hourly` run `398610988453239`
 
 | Task | Result | Seconds |
 |---|---|---|
-| ingest_pool_price | SUCCESS | 36 |
-| ingest_wind_solar_forecast | SUCCESS | 37 |
-| ingest_wind_solar_metered | SUCCESS | 36 |
-| ingest_outage_outlook | SUCCESS | 40 |
-| ingest_supply_demand | SUCCESS | 25 |
-| transform | SUCCESS | 82 |
-| forecast | SUCCESS | 55 |
-| lakebase_sync | SUCCESS | 57 |
-| governance | SUCCESS | 33 |
+| ingest_pool_price | SUCCESS | 27 |
+| ingest_wind_solar_forecast | SUCCESS | 17 |
+| ingest_wind_solar_metered | SUCCESS | 76 |
+| ingest_outage_outlook | SUCCESS | 23 |
+| ingest_supply_demand | SUCCESS | 112 |
+| transform | SUCCESS | 133 |
+| forecast | SUCCESS | 82 |
+| lakebase_sync | SUCCESS | 58 |
+| governance | SUCCESS | 44 |
 
 ### Lakeflow Spark Declarative Pipeline `aeso-transform`
 
-Serverless: True · channel CURRENT · target `energy_canada_demos_catalog.aeso_price_forecast` · source `src/pipeline/transformations.py` · latest update `2af14aab-c7fa-4769-9ff6-3bd8d687df0d`: **COMPLETED** (created 2026-11-23 21:21 UTC)
+Serverless: True · channel CURRENT · target `energy_canada_demos_catalog.aeso_price_forecast` · source `src/pipeline/ingest.py, src/pipeline/transformations.py` · latest update `242cef7e-063b-45d9-bb54-d07a26bb67fc`: **COMPLETED** (created 2026-11-23 23:16 UTC)
 
 Expectations on the latest update (pipeline event log):
 
 | dataset | expectation | passed_records | failed_records |
 |---|---|---|---|
-| energy_canada_demos_catalog.aeso_price_forecast.gold_price_features_hourly | has_regressor | 8006 | 0 |
-| energy_canada_demos_catalog.aeso_price_forecast.gold_price_features_hourly | valid_hour | 8006 | 0 |
-| energy_canada_demos_catalog.aeso_price_forecast.silver_pool_price_hourly | aeso_forecast_present | 7841 | 0 |
-| energy_canada_demos_catalog.aeso_price_forecast.silver_pool_price_hourly | price_in_market_range | 7841 | 0 |
-| energy_canada_demos_catalog.aeso_price_forecast.silver_pool_price_hourly | valid_hour | 7841 | 0 |
+| energy_canada_demos_catalog.aeso_price_forecast.aeso_fundamentals_snapshots | forward_only | 335 | 15679 |
+| energy_canada_demos_catalog.aeso_price_forecast.aeso_outage_outlook | valid_period | 864 | 0 |
+| energy_canada_demos_catalog.aeso_price_forecast.aeso_pool_price | valid_hour | 7843 | 0 |
+| energy_canada_demos_catalog.aeso_price_forecast.aeso_supply_demand_hourly | valid_hour | 7919 | 0 |
+| energy_canada_demos_catalog.aeso_price_forecast.aeso_wind_solar_forecast | valid_hour | 247 | 0 |
+| energy_canada_demos_catalog.aeso_price_forecast.aeso_wind_solar_metered | valid_hour | 7823 | 0 |
+| energy_canada_demos_catalog.aeso_price_forecast.aeso_wind_solar_published | valid_hour | 7295 | 0 |
+| energy_canada_demos_catalog.aeso_price_forecast.bronze_gen_capacity | has_fuel_hour | 71271 | 0 |
+| energy_canada_demos_catalog.aeso_price_forecast.bronze_intertie | has_tie_hour | 39595 | 0 |
+| energy_canada_demos_catalog.aeso_price_forecast.bronze_load | has_hour | 7919 | 0 |
+| energy_canada_demos_catalog.aeso_price_forecast.bronze_outage_outlook | has_period | 144 | 0 |
+| energy_canada_demos_catalog.aeso_price_forecast.bronze_pool_price | has_hour | 7843 | 0 |
+| energy_canada_demos_catalog.aeso_price_forecast.bronze_wind_solar_forecast | has_hour | 215 | 0 |
+| energy_canada_demos_catalog.aeso_price_forecast.bronze_wind_solar_metered | has_asset_hour | 768814 | 0 |
+| energy_canada_demos_catalog.aeso_price_forecast.gold_price_features_hourly | has_regressor | 8008 | 0 |
+| energy_canada_demos_catalog.aeso_price_forecast.gold_price_features_hourly | valid_hour | 8008 | 0 |
+| energy_canada_demos_catalog.aeso_price_forecast.silver_pool_price_hourly | aeso_forecast_present | 7843 | 0 |
+| energy_canada_demos_catalog.aeso_price_forecast.silver_pool_price_hourly | price_in_market_range | 7843 | 0 |
+| energy_canada_demos_catalog.aeso_price_forecast.silver_pool_price_hourly | valid_hour | 7843 | 0 |
 | energy_canada_demos_catalog.aeso_price_forecast.silver_supply_demand_hourly | capability_present | 7919 | 0 |
-| energy_canada_demos_catalog.aeso_price_forecast.silver_supply_demand_hourly | dayahead_wind_present | 7365 | 554 |
+| energy_canada_demos_catalog.aeso_price_forecast.silver_supply_demand_hourly | dayahead_wind_present | 7367 | 552 |
 | energy_canada_demos_catalog.aeso_price_forecast.silver_supply_demand_hourly | load_in_range | 7919 | 0 |
 | energy_canada_demos_catalog.aeso_price_forecast.silver_supply_demand_hourly | valid_hour | 7919 | 0 |
-| energy_canada_demos_catalog.aeso_price_forecast.silver_wind_solar_hourly | regressor_present | 8006 | 0 |
-| energy_canada_demos_catalog.aeso_price_forecast.silver_wind_solar_hourly | valid_hour | 8006 | 0 |
+| energy_canada_demos_catalog.aeso_price_forecast.silver_wind_solar_hourly | regressor_present | 8008 | 0 |
+| energy_canada_demos_catalog.aeso_price_forecast.silver_wind_solar_hourly | valid_hour | 8008 | 0 |
 
 ## Task `ingest_pool_price` (job `aeso-hourly`)
 
-Job run `338879449112685` · task run `667693972042684` · **SUCCESS** · 36s · full output `evidence/raw/aeso-hourly__ingest_pool_price.md` (local)
+Job run `398610988453239` · task run `192711719504626` · **SUCCESS** · 27s · full output `evidence/raw/aeso-hourly__ingest_pool_price.md` (local)
 
 ```text
-Last loaded MPT date: 2026-11-23  ->  fetching 2026-11-23 .. 2026-11-23
+Last settled MPT date: None -> fetching 2026-01-01 .. 2026-11-23
 
-2026-11-23 .. 2026-11-23: 18 rows
-
-MERGE: {'num_affected_rows': 18, 'num_updated_rows': 17, 'num_deleted_rows': 0, 'num_inserted_rows': 1}
-
-total_rows  settled_hours first_hour_mpt       last_hour_mpt  avg_price_cad_mwh  max_price_cad_mwh
-       7841           7838     2026-01-01 2026-11-23 17:00:00              33.72             999.99
+2026-01-01 .. 2026-01-31: 744 records
+  2026-02-01 .. 2026-03-03: 744 records
+  2026-03-04 .. 2026-04-03: 743 records
+  2026-04-04 .. 2026-05-04: 744 records
+  2026-05-05 .. 2026-06-04: 744 records
+  2026-06-05 .. 2026-07-05: 744 records
+  2026-07-06 .. 2026-08-05: 744 records
+  2026-08-06 .. 2026-09-05: 744 records
+  2026-09-06 .. 2026-10-06: 744 records
+  2026-10-07 .. 2026-11-06: 744 records
+  2026-11-07 .. 2026-11-23: 404 records
+Landed 7843 raw records -> /Volumes/energy_canada_demos_catalog/aeso_price_forecast/raw/pool_price/2026-11-23/pool_price_2026-11-23T231428Z.jsonl
+First record as landed: {"begin_datetime_utc": "2026-01-01 07:00", "begin_datetime_mpt": "2026-01-01 00:00", "pool_price": "32.40", "forecast_pool_price": "28.46", "rolling_30day_avg": "39.49"}
 ```
 
-## Task `ingest_wind_solar_forecast` (job `aeso-hourly`)
+## Query: Bronze streaming tables (Auto Loader from the raw landing volume): records and files landed
 
-Job run `338879449112685` · task run `557074067594023` · **SUCCESS** · 37s · full output `evidence/raw/aeso-hourly__ingest_wind_solar_forecast.md` (local)
-
-```text
-Parsed 215 rows from http://ets.aeso.ca/Market/Reports/Manual/Operations/prodweb_reports/wind_solar_forecast/windsolar_rpt_longterm.csv
-
-MERGE: {'num_affected_rows': 215, 'num_updated_rows': 215, 'num_deleted_rows': 0, 'num_inserted_rows': 0}
-
-total_rows  hours_with_actual      first_hour_mpt       last_hour_mpt
-        245                 77 2026-11-20 09:00:00 2026-11-30 13:00:00
-forecast_transaction_date  min_mw  most_likely_mw  max_mw  actual_mw  mcr_mw  pct_min  pct_most_likely  pct_max
-      2026-11-30 13:00:00  242.57          871.89 5067.28        NaN  7576.0     3.20            11.51    66.89
-      2026-11-30 12:00:00  213.38          848.17 4460.10        NaN  7576.0     2.82            11.20    58.87
-      2026-11-30 11:00:00  143.79          787.19 4064.76        NaN  7576.0     1.90            10.39    53.65
-      2026-11-30 10:00:00   78.27          694.92 3758.00        NaN  7576.0     1.03             9.17    49.60
-      2026-11-30 09:00:00   34.38          591.37 3567.03        NaN  7576.0     0.45             7.81    47.08
-      2026-11-30 08:00:00   30.81          569.80 3376.07        NaN  7576.0     0.41             7.52    44.56
-      2026-11-30 07:00:00   36.90          581.98 3371.85        NaN  7576.0     0.49             7.68    44.51
-      2026-11-30 06:00:00   49.76          599.28 3366.51        NaN  7576.0     0.66             7.91    44.44
-      2026-11-30 05:00:00  116.49          643.11 3313.62        NaN  7576.0     1.54             8.49    43.74
-      2026-11-30 04:00:00  157.23          664.86 3215.50        NaN  7576.0     2.08             8.78    42.44
-```
-
-## Task `ingest_wind_solar_metered` (job `aeso-hourly`)
-
-Job run `338879449112685` · task run `67633103066227` · **SUCCESS** · 36s · full output `evidence/raw/aeso-hourly__ingest_wind_solar_metered.md` (local)
-
-```text
-Wind assets: 50, solar assets: 49
-
-Fetching metered volumes 2026-11-17 .. 2026-11-23
-
-2026-11-17 .. 2026-11-23: 144 hours so far
-
-MERGE: {'num_affected_rows': 144, 'num_updated_rows': 144, 'num_deleted_rows': 0, 'num_inserted_rows': 0}
-
-total_hours first_hour_mpt       last_hour_mpt  avg_wind_mw  avg_solar_mw  max_wind_solar_mw  avg_assets_reporting
-        7823     2026-01-01 2026-11-22 23:00:00       1760.8         427.8             5070.9                  98.3
-```
-
-## Task `ingest_outage_outlook` (job `aeso-hourly`)
-
-Job run `338879449112685` · task run `767877898214113` · **SUCCESS** · 40s · full output `evidence/raw/aeso-hourly__ingest_outage_outlook.md` (local)
-
-```text
-report  periods first_period last_period  avg_gas_out_mw  max_dispatchable_out_mw
-  daily      120   2026-11-01  2027-02-28          1270.0                   3886.0
-monthly       24   2026-12-01  2028-11-01           762.0                   2193.0
- snapshots
-         3
-```
-
-## Query: Bronze coverage
-
-| table_name | rows | first_mpt | last_mpt |
+| bronze_table | records | files_landed | last_landed_utc |
 |---|---|---|---|
-| aeso_pool_price | 7841 | 2026-01-01T00:00:00.000Z | 2026-11-23T17:00:00.000Z |
+| bronze_pool_price | 15685 | 2 | 2026-11-23T23:14:30.000Z |
+| bronze_wind_solar_forecast | 509 | 3 | 2026-11-23T23:14:18.000Z |
+| bronze_wind_solar_metered | 1537628 | 2 | 2026-11-23T23:14:30.000Z |
+| bronze_load | 15838 | 2 | 2026-11-23T23:16:11.000Z |
+| bronze_gen_capacity | 142542 | 2 | 2026-11-23T23:16:12.000Z |
+| bronze_intertie | 79190 | 2 | 2026-11-23T23:16:12.000Z |
+| bronze_wind_solar_published | 14592 | 2 | 2026-11-23T23:00:33.000Z |
+| bronze_outage_outlook | 864 | 3 | 2026-11-23T23:14:26.000Z |
+
+## Query: Conformed silver built by the pipeline from bronze
+
+| silver_view | rows | first_mpt | last_mpt |
+|---|---|---|---|
+| aeso_pool_price | 7843 | 2026-01-01T00:00:00.000Z | 2026-11-23T19:00:00.000Z |
 | aeso_wind_solar_metered | 7823 | 2026-01-01T00:00:00.000Z | 2026-11-22T23:00:00.000Z |
-| aeso_wind_solar_forecast | 245 | 2026-11-20T09:00:00.000Z | 2026-11-30T13:00:00.000Z |
+| aeso_supply_demand_hourly | 7919 | 2026-01-01T00:00:00.000Z | 2026-11-26T23:00:00.000Z |
+| gold_price_features_hourly | 8008 | 2026-01-01T00:00:00.000Z | 2026-11-30T15:00:00.000Z |

@@ -34,11 +34,15 @@ def redact(text: str) -> str:
 # Curated file -> (title, [(job name, task key)], [(label, SQL)])
 SECTIONS = {
     "01_ingest.md": ("Lakeflow: Jobs (ingest, orchestration) and the Spark Declarative Pipeline, as deployed and run", [
-        ("aeso-hourly", "ingest_pool_price"), ("aeso-hourly", "ingest_wind_solar_forecast"),
-        ("aeso-hourly", "ingest_wind_solar_metered"), ("aeso-hourly", "ingest_outage_outlook")], [
-        ("Bronze coverage", f"""SELECT 'aeso_pool_price' AS table_name, COUNT(*) AS rows, MIN(begin_datetime_mpt) AS first_mpt, MAX(begin_datetime_mpt) AS last_mpt FROM {FQ}.aeso_pool_price
+        ("aeso-hourly", "ingest_pool_price")], [
+        ("Bronze streaming tables (Auto Loader from the raw landing volume): records and files landed", " UNION ALL ".join(
+            f"SELECT '{t}' AS bronze_table, COUNT(*) AS records, COUNT(DISTINCT source_file) AS files_landed, MAX(landed_at) AS last_landed_utc FROM {FQ}.{t}"
+            for t in ("bronze_pool_price", "bronze_wind_solar_forecast", "bronze_wind_solar_metered", "bronze_load",
+                      "bronze_gen_capacity", "bronze_intertie", "bronze_wind_solar_published", "bronze_outage_outlook"))),
+        ("Conformed silver built by the pipeline from bronze", f"""SELECT 'aeso_pool_price' AS silver_view, COUNT(*) AS rows, MIN(begin_datetime_mpt) AS first_mpt, MAX(begin_datetime_mpt) AS last_mpt FROM {FQ}.aeso_pool_price
 UNION ALL SELECT 'aeso_wind_solar_metered', COUNT(*), MIN(begin_datetime_mpt), MAX(begin_datetime_mpt) FROM {FQ}.aeso_wind_solar_metered
-UNION ALL SELECT 'aeso_wind_solar_forecast', COUNT(*), MIN(forecast_transaction_date), MAX(forecast_transaction_date) FROM {FQ}.aeso_wind_solar_forecast""")]),
+UNION ALL SELECT 'aeso_supply_demand_hourly', COUNT(*), MIN(begin_datetime_mpt), MAX(begin_datetime_mpt) FROM {FQ}.aeso_supply_demand_hourly
+UNION ALL SELECT 'gold_price_features_hourly', COUNT(*), MIN(ds), MAX(ds) FROM {FQ}.gold_price_features_hourly""")]),
     "02_pipeline_governance.md": ("Declarative pipeline (silver/gold, expectations) and Unity Catalog governance", [
         ("aeso-hourly", "governance")], [
         ("Wind/solar regressor source (how much is imputed)", f"SELECT regressor_source, COUNT(*) AS hours FROM {FQ}.silver_wind_solar_hourly GROUP BY 1 ORDER BY 2 DESC"),
@@ -118,6 +122,7 @@ def lakeflow_capture(w: WorkspaceClient, warehouse_id: str) -> str:
                         FROM event_log('{pipe.pipeline_id}')
                         WHERE event_type = 'flow_progress' AND origin.update_id = '{upd.update_id}'
                           AND details:flow_progress.data_quality.expectations IS NOT NULL)
+                  WHERE e.passed_records + e.failed_records > 0
                   ORDER BY 1, 2""")]
     return "\n".join(lines)
 

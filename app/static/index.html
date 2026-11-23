@@ -60,6 +60,29 @@
   header > * { white-space:nowrap; flex-shrink:0; }
   header > #c0 { white-space:normal; }
   header > .muted { flex-shrink:1; min-width:0; overflow:hidden; text-overflow:ellipsis; }
+  /* Phones and narrow tablets: one column, wrapping header, full-width popover, two-column form, scrollable tables */
+  main > * { min-width:0; }   /* let grid items shrink below their widest child (tables, forms, charts) */
+  @media (max-width:900px) { main { grid-template-columns:minmax(0, 1fr); } }
+  @media (max-width:700px) {
+    #c10 form label, #c10 form select, #c10 form input { min-width:0; width:100%; }
+    header { flex-wrap:wrap; gap:8px 10px; padding:10px 12px; }
+    header > .muted { display:none; }
+    #outchip { margin-left:0; }
+    .score { margin-left:0; }
+    .updated { margin-left:0; width:100%; }
+    #c0 { position:fixed; top:8px; left:8px; right:8px; width:auto; max-height:85vh; overflow-y:auto; }
+    main { padding:8px; gap:8px; }
+    .card { min-height:0; padding:10px; }
+    .card h2 { flex-wrap:wrap; gap:4px; }
+    .chart { min-height:220px; }
+    .big { font-size:42px; }
+    .row { flex-wrap:wrap; gap:12px; }
+    .card .body { overflow-x:auto; }
+    table { font-size:11px; }
+    form { grid-template-columns:1fr 1fr; }
+    form button { grid-column:1 / -1; }
+    .section { margin:6px 2px 0; }
+  }
 </style>
 </head>
 <body>

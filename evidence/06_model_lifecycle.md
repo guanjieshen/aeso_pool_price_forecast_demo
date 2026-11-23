@@ -1,6 +1,6 @@
 # Self-improving models: weekly challenger, model update trigger, gated promotion
 
-Exported 2026-11-23 21:55 UTC by `scripts/export_evidence.py` from the live workspace. Full cell output regenerates into the git-ignored `evidence/raw/`.
+Exported 2026-11-23 23:25 UTC by `scripts/export_evidence.py` from the live workspace. Full cell output regenerates into the git-ignored `evidence/raw/`.
 
 ## Task `train_challenger` (job `aeso-weekly-retrain`)
 
@@ -98,4 +98,4 @@ window      model_name  capture_rate_pct  mae_cad_mwh  n_days hours_above_100
 |---|---|---|---|---|
 | 4 | 1 | 24 | 2026-11-23T15:51:44.000Z | 2026-11-23T15:51:44.000Z |
 | 5 | 6 | 144 | 2026-11-23T16:02:32.000Z | 2026-11-23T18:36:17.000Z |
-| 7 | 5 | 120 | 2026-11-23T19:18:57.000Z | 2026-11-23T21:23:00.000Z |
+| 7 | 8 | 192 | 2026-11-23T19:18:57.000Z | 2026-11-23T23:19:27.000Z |

@@ -1,14 +1,14 @@
 # ML: HMM + Prophet + Monte Carlo ensemble, walk-forward backtest of the champion, business value
 
-Exported 2026-11-23 21:55 UTC by `scripts/export_evidence.py` from the live workspace. Full cell output regenerates into the git-ignored `evidence/raw/`.
+Exported 2026-11-23 23:24 UTC by `scripts/export_evidence.py` from the live workspace. Full cell output regenerates into the git-ignored `evidence/raw/`.
 
 ## Task `forecast` (job `aeso-hourly`)
 
-Job run `338879449112685` · task run `210039494816023` · **SUCCESS** · 55s · full output `evidence/raw/aeso-hourly__forecast.md` (local)
+Job run `398610988453239` · task run `923322879471756` · **SUCCESS** · 82s · full output `evidence/raw/aeso-hourly__forecast.md` (local)
 
 ```text
-History: 7838 settled hours, 2026-01-01 00:00:00 .. 2026-11-23 14:00:00 MPT
-Forecast window: 2026-11-23 15:00:00 .. 2026-11-24 14:00:00 MPT (24 hours)
+History: 7840 settled hours, 2026-01-01 00:00:00 .. 2026-11-23 16:00:00 MPT
+Forecast window: 2026-11-23 17:00:00 .. 2026-11-24 16:00:00 MPT (24 hours)
 
 Champion: energy_canada_demos_catalog.aeso_price_forecast.pool_price_ensemble v7 config {"fundamentals_gate": [1000, 2500], "n_paths": 500, "prophet_cps": 0.05, "regime_cps": 0.001, "regressors": ["wind_solar_mw"], "weight_high": 1.0, "weight_low": 0.7}
 
@@ -16,32 +16,32 @@ Champion: energy_canada_demos_catalog.aeso_price_forecast.pool_price_ensemble v7
 HMM regimes (sorted by mean):
 regime  mean_cad_mwh  std_cad_mwh  share_of_hours_pct  p_stay_1h
    Low          7.62         6.65                44.1      0.943
-Normal         27.37         8.84                46.3      0.892
- Spike        178.24       225.62                 9.6      0.753
+Normal         27.37         8.83                46.3      0.892
+ Spike        178.15       225.57                 9.6      0.754
 
 Transition matrix (rows = from, cols = to):
           Low  Normal  Spike
 Low     0.943   0.057  0.000
 Normal  0.054   0.892  0.054
-Spike   0.000   0.247  0.753
+Spike   0.000   0.246  0.754
 
 Current regime: Normal
-Prophet vs Monte Carlo gap: before 19.91 -> after convergence 5.32 CAD/MWh
+Prophet vs Monte Carlo gap: before 20.13 -> after convergence 5.71 CAD/MWh
 
 forecast_datetime_mpt  hour_ending  prophet_forecast_price  prophet_regime_price  mc_p10_price  mc_p90_price  mc_seasonal_p50_price  ensemble_forecast_price forecast_regime  p_spike
-  2026-11-23 15:00:00           16                   38.19                 21.86         12.13         39.43                  26.16                    22.33          Normal     0.04
-  2026-11-23 16:00:00           17                   49.51                 24.16          7.78         39.12                  25.31                    24.39          Normal     0.09
-  2026-11-23 17:00:00           18                   62.58                 25.26          8.58         48.58                  28.27                    26.13          Normal     0.11
-  2026-11-23 18:00:00           19                   70.90                 24.04          5.90         43.64                  27.11                    24.96          Normal     0.11
-  2026-11-23 19:00:00           20                   73.60                 22.55          3.93         45.44                  26.80                    23.82          Normal     0.12
-  2026-11-23 20:00:00           21                   66.76                 20.91          5.43         49.84                  29.53                    23.50          Normal     0.12
-  2026-11-23 21:00:00           22                   51.35                 19.07          3.83         44.10                  26.72                    21.36          Normal     0.11
-  2026-11-23 22:00:00           23                   33.07                 16.95          2.68         52.38                  23.15                    18.81          Normal     0.13
-  2026-11-23 23:00:00           24                   20.00                 15.31          2.92         53.30                  23.77                    17.85          Normal     0.14
-  2026-11-24 00:00:00            1                   15.71                 14.70          3.23         54.73                  21.70                    16.80          Normal     0.14
-  2026-11-24 01:00:00            2                   16.79                 14.81          3.07         44.94                  22.04                    16.98          Normal     0.12
-  2026-11-24 02:00:00            3                   19.08                 15.53          1.60         42.92                  19.98                    16.87          Normal     0.11
-  2026-11-24 03:00:00            4                   20.86                 
+  2026-11-23 17:00:00           18                   66.84                 26.96         12.13         39.41                  28.17                    27.09          Normal     0.04
+  2026-11-23 18:00:00           19                   75.53                 25.88          7.79         39.10                  27.28                    26.17          Normal     0.09
+  2026-11-23 19:00:00           20                   77.39                 24.04          8.58         48.56                  28.65                    25.38          Normal     0.11
+  2026-11-23 20:00:00           21                   69.57                 22.01          5.90         44.84                  29.24                    24.18          Normal     0.11
+  2026-11-23 21:00:00           22                   53.57                 19.93          3.95         45.42                  27.57                    22.22          Normal     0.12
+  2026-11-23 22:00:00           23                   34.92                 17.66          5.62         49.82                  26.53                    20.32          Normal     0.12
+  2026-11-23 23:00:00           24                   20.91                 15.66          4.31         44.08                  23.99                    18.16          Normal     0.11
+  2026-11-24 00:00:00            1                   15.15                 14.51          3.03         52.35                  22.10                    16.78          Normal     0.13
+  2026-11-24 01:00:00            2                   15.72                 14.43          2.92         53.24                  23.32                    17.10          Normal     0.14
+  2026-11-24 02:00:00            3                   18.72                 15.44          3.23         54.70                  21.48                    17.25          Normal     0.14
+  2026-11-24 03:00:00            4                   21.65                 17.18          3.12         44.92                  21.35                    18.43          Normal     0.12
+  2026-11-24 04:00:00            5                   25.75                 19.53          1.60         42.90                  19.68                    19.57          Normal     0.11
+  2026-11-24 05:00:00            6                   33.47                 
 ```
 
 ## Task `business_value` (job `aeso-evaluate-challenger`)

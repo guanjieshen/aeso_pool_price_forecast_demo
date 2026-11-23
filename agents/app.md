@@ -15,6 +15,8 @@ A FastAPI backend (`app/app.py`) and one page (`app/static/index.html`, Plotly.j
 
 Keep this order when adding a card: put it in the section whose question it answers.
 
+**Responsive:** two columns on desktop, one below 900px; below 700px the header wraps, the score popover becomes a fixed panel, the ops form uses two columns and tables scroll inside their card. Grid items have `min-width: 0` so a wide table or form never widens the page.
+
 ## Where each card reads from
 
 | # | Card | Feed | Source | Filter |
