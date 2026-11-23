@@ -35,7 +35,7 @@ def redact(text: str) -> str:
 SECTIONS = {
     "01_ingest.md": ("Ingest: AESO API + CSV into bronze Delta (Lakeflow Job tasks)", [
         ("aeso-hourly", "ingest_pool_price"), ("aeso-hourly", "ingest_wind_solar_forecast"),
-        ("aeso-hourly", "ingest_wind_solar_metered")], [
+        ("aeso-hourly", "ingest_wind_solar_metered"), ("aeso-hourly", "ingest_outage_outlook")], [
         ("Bronze coverage", f"""SELECT 'aeso_pool_price' AS table_name, COUNT(*) AS rows, MIN(begin_datetime_mpt) AS first_mpt, MAX(begin_datetime_mpt) AS last_mpt FROM {FQ}.aeso_pool_price
 UNION ALL SELECT 'aeso_wind_solar_metered', COUNT(*), MIN(begin_datetime_mpt), MAX(begin_datetime_mpt) FROM {FQ}.aeso_wind_solar_metered
 UNION ALL SELECT 'aeso_wind_solar_forecast', COUNT(*), MIN(forecast_transaction_date), MAX(forecast_transaction_date) FROM {FQ}.aeso_wind_solar_forecast""")]),

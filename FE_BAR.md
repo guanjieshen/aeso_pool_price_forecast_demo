@@ -21,7 +21,7 @@ Power is the **largest operating cost** for a liquids pipeline. Its Alberta pump
 | **ML** | 3-state HMM + Prophet + Monte Carlo, converged, ensemble, plus a **supply-cushion fundamentals model** for thin-cushion hours; walk-forward backtest on **day-ahead (as-known) features**; MLflow; UC model `pool_price_ensemble@champion` | `src/ml/` | ✅ |
 | **ML lifecycle** | **Self-improving:** weekly challenger, **model update trigger** on `@challenger`, gated promotion on capture rate, forecast archive + daily drift monitor | `src/ml/train_challenger.py`, `evaluate_challenger.py`, `daily_monitor.py` | ✅ |
 | **Lakebase** | Synced tables for the app's live cards + `ops_actions` write-back | `resources/serving.yml`, `src/lakebase/` | ✅ |
-| **App** | AESO Market Pulse (FastAPI + Plotly.js), a plain-language accuracy score, 9 cards + ops action form | `app/`, `resources/serving.yml` | ✅ |
+| **App** | AESO Market Pulse (FastAPI + Plotly.js), an accuracy score, AESO outage outlook, 9 cards + ops action form | `app/`, `resources/serving.yml` | ✅ |
 | **Genie** | Genie space with instructions and a scored benchmark; screen-aware "Analyze with Genie" links into Genie One | `src/genie/`, `scripts/genie_benchmark.py` | ✅ |
 
 ## Results (real runs, see `evidence/`)

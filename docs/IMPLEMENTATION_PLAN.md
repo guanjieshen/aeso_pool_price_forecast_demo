@@ -60,6 +60,7 @@ AESO files (forecasts) ─┘     1. ingest notebooks ─► bronze Delta (MERGE
 | `aeso_supply_demand_hourly` | bronze | `src/ingest/supply_demand.py` (MERGE) | `begin_datetime_utc` |
 | `aeso_wind_solar_published` | bronze | `src/ingest/supply_demand.py` (overwrite from AESO's yearly files) | `forecast_datetime_mpt` |
 | `aeso_fundamentals_snapshots` | bronze | `src/ingest/supply_demand.py` (append every run) | `snapshot_at, begin_datetime_mpt` |
+| `aeso_outage_outlook` | bronze | `src/ingest/outage_outlook.py` (append every run) | `snapshot_at, report, period_start` |
 | `silver_pool_price_hourly` | silver | pipeline | `begin_datetime_utc` |
 | `silver_supply_demand_hourly` | silver | pipeline | `begin_datetime_mpt` |
 | `silver_wind_solar_hourly` | silver | pipeline | `forecast_transaction_date` |

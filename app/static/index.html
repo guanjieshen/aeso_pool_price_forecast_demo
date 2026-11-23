@@ -58,6 +58,7 @@
   <section class="card" id="c5"><h2>Price direction (next 6 hours) <a class="genie" target="_blank">ANALYZE WITH GENIE ↗</a></h2><div class="body"></div></section>
   <section class="card" id="c6"><h2>24-hour market regime forecast <a class="genie" target="_blank">ANALYZE WITH GENIE ↗</a></h2><div class="chart"></div></section>
   <section class="card wide" id="c7"><h2>24-hour price forecast <a class="genie" target="_blank">ANALYZE WITH GENIE ↗</a></h2><div class="chart"></div></section>
+  <section class="card wide" id="c11"><h2>Generation outage outlook (AESO daily + monthly reports) <a class="genie" target="_blank">ANALYZE WITH GENIE ↗</a></h2><div class="chart"></div><div class="body"></div></section>
   <section class="card" id="c8"><h2>Backtest: actual vs predicted <a class="genie" target="_blank">ANALYZE WITH GENIE ↗</a></h2><div class="chart"></div></section>
   <section class="card" id="c9"><h2>Model accuracy leaderboard <a class="genie" target="_blank">ANALYZE WITH GENIE ↗</a></h2><div class="body"></div></section>
   <section class="card wide" id="c10"><h2>Ops actions: spike alerts and load shifts (Lakebase) <a class="genie" target="_blank">ANALYZE WITH GENIE ↗</a></h2>
@@ -216,6 +217,24 @@ function render({ data, errors, genie }) {
      <td>${money(r.mae_cad_mwh)}</td><td>${money(r.rmse_cad_mwh)}</td><td>${r.mape_pct ?? "--"}%</td></tr>`).join("")}</table>
     <p class="muted">Latest ${data.leaderboard[0]?.n_days ?? ""}-day walk-forward backtest, lowest MAE first. AESO's forecast is published only hours ahead.</p>`;
   genieLink("c9", "Compare model accuracy (MAE, RMSE, MAPE) in the latest backtest, and explain why AESO's own forecast scores best and how the ensemble compares with same-hour-yesterday.");
+
+  // 11. Outage outlook: MW expected out by fuel. Less dispatchable capacity = thinner supply cushion = spike risk.
+  const outs = data.outages || [], daily = outs.filter(r => r.report === "daily"), monthly = outs.filter(r => r.report === "monthly");
+  if (daily.length) {
+    const d = daily.map(r => r.period.slice(5));
+    plot("c11", [{ x:d, y:daily.map(r => r.gas), name:"Gas out", type:"bar", marker:{ color:C.amber } },
+                 { x:d, y:daily.map(r => r.hydro), name:"Hydro out", type:"bar", marker:{ color:C.blue } },
+                 { x:d, y:daily.map(r => r.other), name:"Storage + other out", type:"bar", marker:{ color:C.muted } }],
+         { barmode:"stack", yaxis:{ gridcolor:C.line, title:"MW out" } });
+    const peak = daily.reduce((a, r) => (r.dispatchable > a.dispatchable ? r : a)), avg = daily.reduce((s, r) => s + r.dispatchable, 0) / daily.length;
+    const mPeak = monthly.length ? monthly.reduce((a, r) => (r.dispatchable > a.dispatchable ? r : a)) : null;
+    body("c11").innerHTML = `<p class="num" style="margin:4px 0">Next 30 days: <b>${Math.round(avg).toLocaleString()} MW</b> of gas, hydro and storage out on average; most on <b>${peak.period}</b> (${peak.dispatchable.toLocaleString()} MW).
+      ${mPeak ? `Next 12 months: heaviest month <b>${mPeak.period.slice(0, 7)}</b> (${mPeak.dispatchable.toLocaleString()} MW average).` : ""}</p>
+      <p class="muted" style="margin:0">${monthly.map(r => `${r.period.slice(0, 7)}: ${r.dispatchable.toLocaleString()}`).join(" · ")} MW (monthly average out). Snapshot ${daily[0].snapshot_at} UTC; wind/solar outages excluded.</p>`;
+    genieLink("c11", `AESO's outage outlook shows ${Math.round(avg)} MW of dispatchable generation out on average over the next 30 days, peaking at ${peak.dispatchable} MW on ${peak.period}. Which fuels drive it, and how did pool price and the supply cushion behave on past days with similar outages? Use aeso_outage_outlook and gold_price_features_hourly.`);
+  } else {
+    body("c11").innerHTML = `<p class="muted">No outage outlook yet: the hourly job's ingest_outage_outlook task loads it.</p>`;
+  }
 
   // 10. Ops actions
   const acts = data.actions;

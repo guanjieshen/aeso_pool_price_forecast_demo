@@ -14,8 +14,9 @@ A FastAPI backend (`app/app.py`) and one page (`app/static/index.html`, Plotly.j
 | 5 | Price direction (next 6h) | `prices` + `forecast` | Lakebase | Avg of first 6 ensemble rows vs now; ±5% = stable |
 | 6 | 24h regime forecast | `forecast` | **Lakebase** `forecast_latest_synced` | `model_run_timestamp = MAX(...)` |
 | 7 | 24h price forecast | `forecast` | Lakebase | Same; background tinted by `forecast_regime` |
-| 8 | Backtest actual vs predicted | `backtest` | Warehouse: `aeso_backtest_detail` | Latest run and `cutoff_date = MAX(cutoff_date)` |
+| 8 | Backtest actual vs predicted | `backtest` | Warehouse: `aeso_backtest_detail` | Latest run, and its last `cutoff_date` (not the max over all runs: day-ahead windows can end earlier than older runs) |
 | 9 | Leaderboard | `leaderboard` | Warehouse: `aeso_backtest_metrics` | Latest run, top 3 by MAE |
+| 11 | Generation outage outlook (wide) | `outages` | Warehouse: `aeso_outage_outlook` | Latest snapshot: daily MW out by fuel group for the next 30 days (stacked bars), monthly averages for the next 12 months |
 | 10 | Ops actions | `actions` | **Lakebase** `ops.ops_actions` (read/write) | Latest 8 |
 
 One call, `GET /api/dashboard`, runs every feed in parallel; a failing feed returns `[]` plus an entry in `errors`, so one bad card never blanks the page. `POST /api/ops_actions` validates and inserts a spike alert or load shift.

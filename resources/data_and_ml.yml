@@ -47,6 +47,9 @@ resources:
         - task_key: ingest_wind_solar_metered
           notebook_task:
             notebook_path: ../src/ingest/wind_solar_metered.py
+        - task_key: ingest_outage_outlook     # daily + monthly outage reports (app card, archived per run)
+          notebook_task:
+            notebook_path: ../src/ingest/outage_outlook.py
         - task_key: ingest_supply_demand
           depends_on:
             - task_key: ingest_wind_solar_forecast   # its snapshot archive includes the 7-day wind/solar forecast

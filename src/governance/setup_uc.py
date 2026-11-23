@@ -26,6 +26,7 @@ TABLES = {
     "aeso_supply_demand_hourly": ("bronze", "data_engineering", "aeso_api_public"),
     "aeso_wind_solar_published": ("bronze", "data_engineering", "aeso_csv_public"),
     "aeso_fundamentals_snapshots": ("bronze", "data_engineering", "aeso_api_public"),
+    "aeso_outage_outlook": ("bronze", "data_engineering", "aeso_report_public"),
     "silver_supply_demand_hourly": ("silver", "data_engineering", "derived"),
     "aeso_price_drivers": ("gold", "analytics", "derived"),
     "aeso_backtest_windows": ("gold", "machine_learning", "model_output"),

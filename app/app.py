@@ -107,7 +107,8 @@ QUERIES = {
                aeso_forecast, naive_yesterday, CAST(cutoff_date AS STRING) AS cutoff_date
         FROM {FQ}.aeso_backtest_detail
         WHERE run_timestamp = (SELECT MAX(run_timestamp) FROM {FQ}.aeso_backtest_detail)
-          AND cutoff_date = (SELECT MAX(cutoff_date) FROM {FQ}.aeso_backtest_detail)
+          AND cutoff_date = (SELECT MAX(cutoff_date) FROM {FQ}.aeso_backtest_detail
+                             WHERE run_timestamp = (SELECT MAX(run_timestamp) FROM {FQ}.aeso_backtest_detail))
         ORDER BY forecast_hour"""),
     # 9: leaderboard
     "leaderboard": ("dbsql", f"""
@@ -122,6 +123,16 @@ QUERIES = {
                n_days, (SELECT CONCAT('v', MAX_BY(champion_version, run_timestamp)) FROM {FQ}.aeso_backtest_metrics) AS champion
         FROM {FQ}.aeso_backtest_windows
         WHERE run_timestamp = (SELECT MAX(run_timestamp) FROM {FQ}.aeso_backtest_windows)"""),
+    # 11: outage outlook, latest published snapshot: daily for the next 30 days, monthly for the next 12 months
+    "outages": ("dbsql", f"""
+        SELECT report, CAST(period_start AS STRING) AS period, ROUND(gas_out_mw) AS gas, ROUND(hydro_mw) AS hydro,
+               ROUND(energy_storage_mw + biomass_other_mw) AS other, ROUND(wind_mw + solar_mw) AS wind_solar,
+               ROUND(dispatchable_out_mw) AS dispatchable, CAST(snapshot_at AS STRING) AS snapshot_at
+        FROM {FQ}.aeso_outage_outlook
+        WHERE snapshot_at = (SELECT MAX(snapshot_at) FROM {FQ}.aeso_outage_outlook)
+          AND ((report = 'daily' AND period_start BETWEEN current_date() AND date_add(current_date(), 30))
+            OR (report = 'monthly' AND period_start <= add_months(current_date(), 12)))
+        ORDER BY report, period_start"""),
     # ops actions written by this app
     "actions": ("pg", f"""
         SELECT action_id, {PG_TS.format('created_at')} AS created_utc, created_by, action_type,

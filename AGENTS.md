@@ -72,6 +72,7 @@ Lead with what matters. Tables for anything with more than two parts. **Bold the
 - **The intertie API (`itc/v1/interchange`) wants `yyyyMMdd` dates** plus `startHE`, `endHE`, `version`; ISO dates return a 500.
 - **AESO's yearly wind/solar forecast files end with a checksum line** that is not a date; skip unparseable rows. They are refreshed about monthly, so the snapshot archive covers the latest weeks.
 - **Never backtest on realised wind.** The test day must use the `*_dayahead_mw` columns; a realised-wind backtest on a quiet window showed 90% capture; on day-ahead wind (Oct 18 to 31) the same champion scored 73%.
+- **The outage reports are HTML pages on ets.aeso.ca, not API endpoints.** The parser matches `dd-Mon-yyyy` + 11 numbers (daily) and `Mon yyyy` + 10 numbers (monthly) and fails loudly if nothing matches.
 - **The metered volume API rejects long `asset_ID` lists** (400 at 25 IDs); 10 per call works.
 - **The wind/solar CSV holds only about 2 days of actuals**; history comes from metered volumes.
 - **`domain` and `layer` are governed tags** in this metastore with fixed value lists; an unlisted value fails the whole statement.
