@@ -26,11 +26,13 @@ Power is the **largest operating cost** for a liquids pipeline. Its Alberta pump
 
 ## Results (real runs, see `evidence/`)
 
+> **Re-baselined accuracy: about 77%.** Our published 90.2% capture was scored with realised wind on a quiet fortnight. Re-scored on day-ahead information over three 14-day windows, that model captures **76.7%** of perfect-foresight savings. The supply-cushion model since promoted lifts it to **87.3%** (AESO's hours-ahead forecast: 91.7%) ([06](evidence/06_model_lifecycle.md)).
+
 **Ingest:** 7,839 hourly prices (2026-01-01 to today), 7,823 metered wind/solar hours; only **1 of 8,004 regressor hours is imputed** ([01](evidence/01_ingest.md), [02](evidence/02_pipeline_governance.md)).
 
 **What drives the price.** Alberta clears the cheapest offers first, so the price follows the **supply cushion** (available gas, hydro and storage + wind/solar + intertie imports - forecast load). It explains **24.0% of 2026 price variance and 17.9% of spike variance**, against 12.2% and 5.7% for wind alone; hours under 2,000 MW of cushion are **6.1% of hours but 78% of spike hours** ([07](evidence/07_fundamentals.md)). Outages, load or capability on their own explain about 1 to 2%.
 
-**No look-ahead.** Backtests feed the test day only what was known before it began: AESO's **published wind/solar forecast** (MAE 364 MW against actuals) and the cushion built from it, never the realised wind. Each hourly run also archives the forward fundamentals as published, so this holds after AESO's monthly file ends ([07](evidence/07_fundamentals.md)). Re-scored this way, the previous champion v5 averages **76.7% capture over three 14-day windows** (73.1% on the latest, Oct 18 to 31), not the 90.2% it showed on a quiet window with realised wind. The current champion v7 averages **87.3%**, against 91.7% for AESO's hours-ahead forecast ([06](evidence/06_model_lifecycle.md)).
+**No look-ahead.** Backtests feed the test day only what was known before it began: AESO's **published wind/solar forecast** (MAE 364 MW against actuals) and the cushion built from it, never the realised wind. Each hourly run also archives the forward fundamentals as published, so this holds after AESO's monthly file ends ([07](evidence/07_fundamentals.md)). On the latest window alone (Oct 18 to 31) the re-baselined model captured 73.1%.
 
 **The models improve themselves.** Every Monday a challenger recipe is tuned on an earlier window and registered as `@challenger`; the **model update trigger** backtests it against `@champion` on the same days and promotes it only if it captures more load-shift value without worse accuracy. The supply-cushion recipe (v7) was promoted over v5 on Oct 18 to 31: capture **73.1% to 80.3%**, MAE **31.79 to 27.37**. A Prophet-only tweak (v6) was rejected the same day ([06](evidence/06_model_lifecycle.md)).
 

@@ -13,7 +13,7 @@ Built on Databricks from public AESO market data · November 2026
 | | |
 | --- | --- |
 | **Where the money is** | In 2026, **2.6% of hours** (200 hours above $150/MWh) carried **35.8%** of a flat load's Alberta pool-price cost |
-| **What a forecast can capture** | Over a 14-day walk-forward backtest the forecast's hour ranking captured **80%** of the savings perfect foresight would give, using only what was known the day before |
+| **What a forecast can capture** | **Re-baselined to about 77%** of the savings perfect foresight would give, using only what was known the day before (three 14-day backtests); the supply-cushion model since promoted lifts it to **87%** |
 | **What that is worth** | Indicative 2026 to date, **per 10 MW of flexible load: about $0.93M** |
 | **How fast, and getting better** | Refreshed **every hour**; the model **retrains and re-qualifies itself every week** |
 
