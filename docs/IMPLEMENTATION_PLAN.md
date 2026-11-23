@@ -25,6 +25,7 @@ Each phase is one GitHub milestone, one tracking issue and one pull request into
 | **2. ML** | HMM + Prophet + Monte Carlo, converged models, ensemble, 5-day walk-forward backtest with AESO and naive baselines, MLflow + UC model registry, business value | Backtest metrics written, model `@champion` registered | ✅ |
 | **3. App + Lakebase** | Lakebase project, synced tables, `ops_actions` write-back, AESO Market Pulse app (9 cards + ops action form) | App deployed, reads Lakebase, write-back round trip verified | ✅ |
 | **4. AI + story** | Genie space (instructions, benchmark), screen-aware "Analyze with Genie" links to Genie One, evidence export, deck | Benchmark scored, evidence and deck committed | ✅ |
+| **5. Self-improving models** | Weekly challenger, model update trigger on `@challenger`, gated promotion (capture rate + MAE guard), forecast archive, daily live-accuracy and drift monitor | A challenger promoted (or rejected) by the triggered job, decision logged | ✅ |
 
 ## Architecture
 
@@ -58,6 +59,9 @@ AESO CSV (wind/solar)  ─┘     1. ingest notebooks ─► bronze Delta (MERGE
 | `aeso_price_forecast_output` | gold | `src/ml/pool_price_forecast.py` (overwrite) | `forecast_datetime_mpt` |
 | `aeso_backtest_metrics` | gold | forecast notebook (append) | `run_timestamp, model_name` |
 | `aeso_backtest_detail` | gold | forecast notebook (append) | `run_timestamp, cutoff_date, forecast_hour` |
+| `aeso_forecast_history` | gold | forecast notebook (append, every hourly run) | `model_run_timestamp, forecast_datetime_mpt` |
+| `aeso_model_promotions` | gold | `src/ml/evaluate_challenger.py` (append) | `evaluated_at` |
+| `aeso_live_accuracy` | gold | `src/ml/daily_monitor.py` (overwrite) | `view, segment, model_name` |
 | `aeso_business_value` | gold | `src/ml/business_value.py` | `run_timestamp, scenario` |
 | `ops_actions_history` | gold | Lakebase copy-back task | `action_id` |
 

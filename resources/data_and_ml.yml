@@ -1,5 +1,5 @@
 # Phases 1-2: hourly ingest -> declarative pipeline -> forecast -> Lakebase sync -> governance,
-# plus the daily backtest + model registration job and its MLflow experiment.
+# plus the self-improving model lifecycle (weekly retrain, triggered evaluation, daily monitor) and the experiment.
 resources:
   pipelines:
     aeso_transform:
@@ -70,30 +70,60 @@ resources:
             - task_key: lakebase_sync
           notebook_task:
             notebook_path: ../src/governance/setup_uc.py
-    aeso_daily_backtest:
-      name: aeso-daily-backtest
-      description: Daily walk-forward backtest of every model, business value, and @champion registration.
+    # Self-improving model lifecycle: weekly challenger -> model update trigger -> gated promotion; daily monitor.
+    aeso_weekly_retrain:
+      name: aeso-weekly-retrain
+      description: Tune a challenger recipe, retrain on all history, register it and set @challenger.
       schedule:
-        quartz_cron_expression: "0 45 6 * * ?"   # 06:45 MPT, after yesterday's prices settle
+        quartz_cron_expression: "0 30 5 ? * MON"   # Mondays 05:30 MPT
         timezone_id: America/Edmonton
         pause_status: UNPAUSED
       max_concurrent_runs: 1
+      email_notifications:
+        on_failure:
+          - ${workspace.current_user.userName}
       parameters:
         - name: catalog
           default: ${var.catalog}
         - name: schema
           default: ${var.schema}
       tasks:
-        - task_key: backtest_and_register
+        - task_key: train_challenger
           notebook_task:
-            notebook_path: ../src/ml/pool_price_forecast.py
+            notebook_path: ../src/ml/train_challenger.py
             base_parameters:
-              run_backtest: "true"
-              backtest_days: "5"
+              experiment: ${resources.experiments.aeso_forecast.name}
+
+    aeso_evaluate_challenger:
+      name: aeso-evaluate-challenger
+      description: Runs when @challenger is set on pool_price_ensemble. Backtests challenger vs champion on the same days and promotes only if better.
+      trigger:
+        pause_status: UNPAUSED
+        model:
+          securable_name: ${var.catalog}.${var.schema}.pool_price_ensemble
+          condition: MODEL_ALIAS_SET
+          aliases: [challenger]
+          min_time_between_triggers_seconds: 300
+      max_concurrent_runs: 1
+      email_notifications:
+        on_failure:
+          - ${workspace.current_user.userName}
+      parameters:
+        - name: catalog
+          default: ${var.catalog}
+        - name: schema
+          default: ${var.schema}
+        - name: events
+          default: "{{job.trigger.model.updates}}"
+      tasks:
+        - task_key: evaluate_and_promote
+          notebook_task:
+            notebook_path: ../src/ml/evaluate_challenger.py
+            base_parameters:
               experiment: ${resources.experiments.aeso_forecast.name}
         - task_key: business_value
           depends_on:
-            - task_key: backtest_and_register
+            - task_key: evaluate_and_promote
           notebook_task:
             notebook_path: ../src/ml/business_value.py
         - task_key: governance
@@ -101,3 +131,24 @@ resources:
             - task_key: business_value
           notebook_task:
             notebook_path: ../src/governance/setup_uc.py
+
+    aeso_daily_monitor:
+      name: aeso-daily-monitor
+      description: Score archived forecasts against settled prices; fail (and email) on drift.
+      schedule:
+        quartz_cron_expression: "0 45 6 * * ?"   # 06:45 MPT, after yesterday's prices settle
+        timezone_id: America/Edmonton
+        pause_status: UNPAUSED
+      max_concurrent_runs: 1
+      email_notifications:
+        on_failure:
+          - ${workspace.current_user.userName}
+      parameters:
+        - name: catalog
+          default: ${var.catalog}
+        - name: schema
+          default: ${var.schema}
+      tasks:
+        - task_key: live_accuracy_and_drift
+          notebook_task:
+            notebook_path: ../src/ml/daily_monitor.py

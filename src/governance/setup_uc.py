@@ -31,6 +31,9 @@ TABLES = {
     "aeso_backtest_detail": ("gold", "machine_learning", "model_output"),
     "aeso_business_value": ("gold", "analytics", "model_output"),
     "ops_actions_history": ("gold", "analytics", "app_write_back"),
+    "aeso_forecast_history": ("gold", "machine_learning", "model_output"),
+    "aeso_model_promotions": ("gold", "machine_learning", "model_lifecycle"),
+    "aeso_live_accuracy": ("gold", "machine_learning", "model_output"),
 }
 existing = {r.tableName: r for r in spark.sql(f"SHOW TABLES IN {FQ}").collect()}
 

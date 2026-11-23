@@ -11,8 +11,8 @@
 # MAGIC | 4 | **Converge** | Regime-aware Prophet (no Spike hours, tight changepoints) and seasonal Monte Carlo |
 # MAGIC | 5 | **Ensemble** | Blend weighted by the chance the current regime holds, bounded [0.3, 0.7] |
 # MAGIC
-# MAGIC Model code lives in `forecast_lib.py`. `run_backtest=true` adds the 5-day walk-forward backtest and
-# MAGIC registers the ensemble in Unity Catalog; the hourly job leaves it off.
+# MAGIC Model code lives in `forecast_lib.py`. The training recipe comes from the `@champion` model version.
+# MAGIC `run_backtest=true` adds the 5-day walk-forward backtest; the hourly job leaves it off.
 
 # COMMAND ----------
 
@@ -58,8 +58,16 @@ print(f"Forecast window: {future.ds.min()} .. {future.ds.max()} MPT ({len(future
 
 # COMMAND ----------
 
+import json
+import ensemble_model
+
+# The forecast uses the training recipe of the registered @champion (promoted by evaluate_challenger.py).
+MODEL_NAME = f"{FQ}.pool_price_ensemble"
+champion_version, config = ensemble_model.config_for(MODEL_NAME, "champion")
+print(f"Champion: {MODEL_NAME} v{champion_version} config {json.dumps(config, sort_keys=True)}")
+
 run_ts = datetime.now(timezone.utc).replace(microsecond=0, tzinfo=None)
-forecast, fitted = fl.forecast_all(history, future)
+forecast, fitted = fl.forecast_all(history, future, config=config)
 states = fitted["states"]
 
 regimes = pd.DataFrame({
@@ -122,9 +130,8 @@ user = spark.sql("SELECT current_user()").first()[0]
 mlflow.set_experiment(dbutils.widgets.get("experiment") or f"/Users/{user}/aeso_pool_price_forecast")
 with mlflow.start_run(run_name=f"{'backtest' if RUN_BACKTEST else 'hourly'}-{run_ts:%Y%m%dT%H%M}") as run:
     mlflow.log_params({"history_hours": len(history), "history_start": str(history.ds.min()),
-                       "history_end": str(history.ds.max()), "hmm_states": 3, "mc_paths": fl.N_PATHS,
-                       "prophet_cps": fl.PROPHET_CPS, "regime_prophet_cps": fl.REGIME_PROPHET_CPS,
-                       "weight_bounds": str(fl.WEIGHT_BOUNDS), "run_backtest": RUN_BACKTEST})
+                       "history_end": str(history.ds.max()), "hmm_states": 3,
+                       "champion_version": champion_version, "run_backtest": RUN_BACKTEST, **config})
     mlflow.log_metrics({**{f"hmm_mean_{r.lower()}": float(m) for r, m in zip(fl.REGIMES, fitted["means"])},
                         "gap_before_cad_mwh": gap_before, "gap_after_cad_mwh": gap_after,
                         "ensemble_mean_24h": float(forecast.ensemble_forecast_price.mean()),
@@ -136,6 +143,10 @@ out = forecast.assign(model_run_timestamp=run_ts, mlflow_run_id=run_id)
  .saveAsTable(f"{FQ}.aeso_price_forecast_output"))
 spark.sql(f"COMMENT ON TABLE {FQ}.aeso_price_forecast_output IS 'Latest 24h pool price forecast (CAD/MWh, MPT hour starts) from every model plus the ensemble. Overwritten each run; forecast_regime and p_spike come from the Monte Carlo paths.'")
 print(f"Wrote {len(out)} forecast rows for run {run_ts} (MLflow run {run_id})")
+
+# Keep every hourly forecast: daily_monitor.py scores them against prices once they settle (live accuracy).
+(spark.createDataFrame(out.assign(champion_version=str(champion_version), config=json.dumps(config, sort_keys=True)))
+ .write.mode("append").option("mergeSchema", "true").saveAsTable(f"{FQ}.aeso_forecast_history"))
 
 # COMMAND ----------
 
@@ -153,29 +164,12 @@ if not RUN_BACKTEST:
 complete_days = history.groupby(history.ds.dt.date).size()
 cutoffs = [pd.Timestamp(d) for d in complete_days[complete_days >= 23].index[-BACKTEST_DAYS:]]
 by_ds = gold.drop_duplicates("ds").set_index("ds")
-detail = []
-for cutoff in cutoffs:
-    train = history[history.ds < cutoff]
-    test = history[(history.ds >= cutoff) & (history.ds < cutoff + pd.Timedelta(days=1))].reset_index(drop=True)
-    pred, _ = fl.forecast_all(train, test[["ds", "wind_solar_mw"]])
-    yesterday = by_ds["y"].reindex(test.ds - pd.Timedelta(days=1)).to_numpy()
-    detail.append(pd.DataFrame({
-        "cutoff_date": cutoff.date(), "forecast_hour": test.ds, "hour_ending": test.ds.dt.hour + 1,
-        "actual": test.y, "prophet": pred.prophet_forecast_price, "mc": pred.mc_p50_price,
-        "prophet_regime": pred.prophet_regime_price, "mc_seasonal": pred.mc_seasonal_p50_price,
-        "ensemble": pred.ensemble_forecast_price, "aeso_forecast": test.forecast_pool_price,
-        "naive_yesterday": yesterday}))
-    print(f"  backtested {cutoff.date()}: {len(test)} hours")
-detail = pd.concat(detail, ignore_index=True)
-
-MODELS = {"prophet": "model", "mc": "model", "prophet_regime": "model", "mc_seasonal": "model",
+detail = (fl.walk_forward(history, by_ds, cutoffs, {"champion": config})
+          .rename(columns={"prophet_regime__champion": "prophet_regime", "ensemble__champion": "ensemble"}))
+SERIES = {"prophet": "model", "mc": "model", "prophet_regime": "model", "mc_seasonal": "model",
           "ensemble": "model", "aeso_forecast": "baseline", "naive_yesterday": "baseline"}
-rows = []
-for name, kind in MODELS.items():
-    ok = detail[name].notna()
-    rows.append({"model_name": name, "model_type": kind,
-                 **fl.metrics(detail.actual[ok].to_numpy(), detail[name][ok].to_numpy())})
-leaderboard = pd.DataFrame(rows).sort_values("mae_cad_mwh").reset_index(drop=True)
+leaderboard = fl.leaderboard(detail, SERIES)
+rows = leaderboard.to_dict("records")
 print(f"Backtest {cutoffs[0].date()} .. {cutoffs[-1].date()} ({len(detail)} hours):\n" + leaderboard.round(2).to_string(index=False))
 
 # COMMAND ----------
@@ -190,33 +184,5 @@ with mlflow.start_run(run_id=run_id):
 
 # COMMAND ----------
 
-# MAGIC %md ## Register the ensemble in Unity Catalog and promote it to `@champion`
-
-# COMMAND ----------
-
-import tempfile
-from mlflow import MlflowClient
-from mlflow.models import infer_signature
-import ensemble_model
-
-MODEL_NAME = f"{FQ}.pool_price_ensemble"
-mlflow.set_registry_uri("databricks-uc")
-example = future[["ds", "wind_solar_mw"]].copy()
-with tempfile.TemporaryDirectory() as tmp, mlflow.start_run(run_id=run_id):
-    artifacts = ensemble_model.save_artifacts(fitted, tmp)
-    info = mlflow.pyfunc.log_model(
-        name="pool_price_ensemble", python_model=ensemble_model.PoolPriceEnsemble(), artifacts=artifacts,
-        code_paths=["forecast_lib.py", "ensemble_model.py"], input_example=example.head(3),
-        signature=infer_signature(example, forecast[["ensemble_forecast_price"]]),
-        pip_requirements=["prophet==1.5.0", "numpy", "pandas", "mlflow"], registered_model_name=MODEL_NAME)
-client = MlflowClient()
-version = info.registered_model_version
-client.set_registered_model_alias(MODEL_NAME, "champion", version)
-client.update_model_version(MODEL_NAME, version, description=(
-    f"Ensemble trained on {len(history)} hours to {history.ds.max()} MPT. Backtest MAE "
-    f"{leaderboard.set_index('model_name').loc['ensemble', 'mae_cad_mwh']:.2f} CAD/MWh over {len(cutoffs)} days."))
-
-champion = mlflow.pyfunc.load_model(f"models:/{MODEL_NAME}@champion")
-check = champion.predict(example)
-print(f"Registered {MODEL_NAME} v{version} as @champion. Reloaded model, first 6 hours:\n"
-      + example.head(6).assign(ensemble=check.ensemble_forecast_price.head(6).round(2)).to_string(index=False))
+# MAGIC %md Registration and promotion live in the model lifecycle: `train_challenger.py` (weekly) registers a
+# MAGIC challenger, and `evaluate_challenger.py` (model update trigger) promotes it only if it beats `@champion`.

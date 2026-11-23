@@ -38,10 +38,10 @@ databricks bundle deploy
 | Step | Command | Takes |
 | --- | --- | --- |
 | 1. Ingest, transform, forecast, govern | `databricks bundle run aeso_hourly` | about 4 min (first run bootstraps from 2026-01-01) |
-| 2. Backtest, business value, register model | `databricks bundle run aeso_daily_backtest` | about 3 min |
+| 2. Propose a challenger model (it is evaluated and promoted automatically by the model update trigger) | `databricks bundle run aeso_weekly_retrain` | about 2 min, then about 3 min for `aeso-evaluate-challenger` |
 | 3. Refresh the text evidence | `uv run --with databricks-sdk python scripts/export_evidence.py` | 1 min |
 
-Both jobs are scheduled (hourly at :20, daily at 06:45 MPT) once deployed.
+Once deployed: `aeso-hourly` runs at :20 every hour, `aeso-weekly-retrain` on Mondays at 05:30 MPT, `aeso-daily-monitor` daily at 06:45 MPT, and `aeso-evaluate-challenger` whenever `@challenger` is set on the model.
 
 ## Teardown
 

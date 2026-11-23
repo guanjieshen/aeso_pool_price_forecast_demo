@@ -14,7 +14,7 @@ description: Use first for any request about this repo, however it is worded ("f
 | An app card, the ops action form, the Genie space or a Genie One prompt changed | **change-the-app-or-genie** |
 | Evidence, `FE_BAR.md` or deck numbers brought up to date | **refresh-evidence** |
 
-If it is unclear, ask **at most two short questions** with examples ("Is this the hourly forecast or the daily backtest?").
+If it is unclear, ask **at most two short questions** with examples ("Is this the hourly forecast or the weekly retrain?").
 
 ## 2. Write the precise task and get a yes
 

@@ -15,16 +15,24 @@ How the forecast notebook and its models work. The method is in `src/ml/forecast
 
 `forecast_regime` per hour is the most common state across the paths; `p_spike` is the share of paths in Spike.
 
-## Jobs
+## Jobs: the self-improving lifecycle
 
 | Job | When | What |
 | --- | --- | --- |
-| `aeso_hourly` → task `forecast` | Hourly | Refit everything, overwrite `aeso_price_forecast_output`, log an MLflow run |
-| `aeso_daily_backtest` | 06:45 MPT | Same plus the backtest (`run_backtest=true`), `business_value.py`, and registering `pool_price_ensemble` as `@champion` |
+| `aeso-hourly` → task `forecast` | Hourly | Refit with the **`@champion`'s config** (version tag `config`), overwrite `aeso_price_forecast_output`, append to `aeso_forecast_history` |
+| `aeso-weekly-retrain` | Mondays 05:30 MPT | `train_challenger.py`: try a grid of recipes on the 7 days before the evaluation window, retrain the best on all history, register it, set **`@challenger`** |
+| `aeso-evaluate-challenger` | **Model update trigger**: `MODEL_ALIAS_SET` on `pool_price_ensemble`, alias `challenger` | `evaluate_challenger.py`: walk-forward on the same last 14 days for both recipes; promote if capture +1 pp **and** MAE ≤ 1.05x; log to `aeso_model_promotions`; rewrite the backtest tables for the resulting champion; then business value and governance |
+| `aeso-daily-monitor` | 06:45 MPT | `daily_monitor.py`: score archived forecasts once prices settle (`aeso_live_accuracy`); fail the job (email) if live MAE > 1.5x the champion's evaluation MAE |
+
+**A model version is a recipe plus its fit.** The config (`regime_cps`, `weight_low`, `weight_high`, `prophet_cps`, `n_paths`) is stored as the version tag `config`; versions without it mean the defaults in `forecast_lib.DEFAULT_CONFIG`. Evaluation compares recipes walk-forward (retrain at every cutoff), which is the honest test for time series.
+
+**Submitting your own challenger:** register a version with a `config` tag (`ensemble_model.register`) and set the `challenger` alias. The trigger does the rest. Never set `@champion` by hand except to roll back.
+
+**Rollback:** `MlflowClient().set_registered_model_alias(name, "champion", <old version>)`; the next hourly run uses it.
 
 ## Backtest
 
-The last `backtest_days` (5) complete days. For each, train on hours before midnight, forecast the day, compare with settled prices. Seven series are scored: the five model variants plus **AESO's forecast** and **same hour yesterday**. MAPE skips hours under $1/MWh.
+`walk_forward()` in `forecast_lib.py` (shared by all three notebooks). The forecast notebook's own `run_backtest=true` option keeps the original 5-day check; evaluation uses 14 days. For each, train on hours before midnight, forecast the day, compare with settled prices. Seven series are scored: the five model variants plus **AESO's forecast** and **same hour yesterday**. MAPE skips hours under $1/MWh.
 
 **Know the bias:** the test day's wind/solar is the observed value (a perfect wind forecast), so Prophet looks a little better than it would live. AESO's forecast is published only hours ahead, so it is a reference, not a fair day-ahead competitor.
 
@@ -34,7 +42,7 @@ The last `backtest_days` (5) complete days. For each, train on hours before midn
 
 ## Registered model
 
-`energy_canada_demos_catalog.aeso_price_forecast.pool_price_ensemble`, a pyfunc (`src/ml/ensemble_model.py`) holding the HMM parameters, seasonal factors and the serialized regime-aware Prophet. Input `ds`, `wind_solar_mw`; output `ensemble_forecast_price`. The notebook reloads `@champion` and predicts as a check.
+`energy_canada_demos_catalog.aeso_price_forecast.pool_price_ensemble`, a pyfunc (`src/ml/ensemble_model.py`) holding the HMM parameters, seasonal factors and the serialized regime-aware Prophet. Input `ds`, `wind_solar_mw`; output `ensemble_forecast_price`. Aliases: `@champion` (in production), `@challenger` (last submitted). Version tags: `config`, `role`, `evaluation`.
 
 ## Gotchas
 

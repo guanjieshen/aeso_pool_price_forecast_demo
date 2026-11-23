@@ -23,7 +23,7 @@ ROOT = Path(__file__).resolve().parents[1]
 EVIDENCE = ROOT / "evidence"
 FQ = "energy_canada_demos_catalog.aeso_price_forecast"
 ANSI = re.compile(r"\x1b\[[0-9;]*m")
-NOISE = re.compile(r"cmdstanpy|Importing plotly|FutureWarning|you may need to restart the kernel|^\s*\S+ = .*groupby|include_groups|UserWarning|pd.read_sql")
+NOISE = re.compile(r"Downloading artifacts|Uploading artifacts|widget-view|View Logged Model|Validating input example|already exists. Creating|cmdstanpy|Importing plotly|FutureWarning|you may need to restart the kernel|^\s*\S+ = .*groupby|include_groups|UserWarning|pd.read_sql")
 MAX_CHARS = 8800
 EMAIL = re.compile(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}")   # public repo: never publish people's emails
 
@@ -45,13 +45,17 @@ UNION ALL SELECT 'aeso_wind_solar_forecast', COUNT(*), MIN(forecast_transaction_
         ("Gold features", f"SELECT COUNT(*) AS rows, COUNT(y) AS settled, MIN(ds) AS first_mpt, MAX(ds) AS last_mpt, SUM(CAST(is_imputed AS INT)) AS imputed_hours FROM {FQ}.gold_price_features_hourly"),
         ("Governed tags per table", f"SELECT table_name, tag_name, tag_value FROM energy_canada_demos_catalog.information_schema.table_tags WHERE schema_name = 'aeso_price_forecast' AND tag_name IN ('layer','data_product','domain') ORDER BY table_name, tag_name"),
         ("Lineage: what reads the gold table", f"SELECT DISTINCT source_table_full_name, target_table_full_name, entity_type FROM system.access.table_lineage WHERE source_table_full_name LIKE '{FQ}.%' AND target_table_full_name IS NOT NULL AND event_date >= current_date() - INTERVAL 2 DAYS ORDER BY 1, 2")]),
-    "03_ml_backtest.md": ("ML: HMM + Prophet + Monte Carlo ensemble, walk-forward backtest, UC model", [
-        ("aeso-daily-backtest", "backtest_and_register"), ("aeso-daily-backtest", "business_value")], [
-        ("Latest backtest leaderboard", f"SELECT model_name, model_type, ROUND(mae_cad_mwh,2) AS mae, ROUND(rmse_cad_mwh,2) AS rmse, ROUND(mape_pct,1) AS mape_pct, n_hours, n_days FROM {FQ}.aeso_backtest_metrics WHERE run_timestamp = (SELECT MAX(run_timestamp) FROM {FQ}.aeso_backtest_metrics) ORDER BY mae"),
+    "03_ml_backtest.md": ("ML: HMM + Prophet + Monte Carlo ensemble, walk-forward backtest of the champion, business value", [
+        ("aeso-hourly", "forecast"), ("aeso-evaluate-challenger", "business_value")], [
+        ("Latest backtest leaderboard (current @champion, same 14 days for every series)", f"SELECT model_name, model_type, ROUND(mae_cad_mwh,2) AS mae, ROUND(rmse_cad_mwh,2) AS rmse, ROUND(mape_pct,1) AS mape_pct, ROUND(capture_rate_pct,1) AS capture_pct, n_days, champion_version FROM {FQ}.aeso_backtest_metrics WHERE run_timestamp = (SELECT MAX(run_timestamp) FROM {FQ}.aeso_backtest_metrics) ORDER BY mae"),
         ("Business value (latest run)", f"SELECT metric, strategy, scenario_mw, ROUND(value,2) AS value FROM {FQ}.aeso_business_value WHERE run_timestamp = (SELECT MAX(run_timestamp) FROM {FQ}.aeso_business_value) AND (strategy IS NULL OR metric = 'capture_rate_pct' OR (metric = 'indicative_ytd_value_cad' AND scenario_mw = 10)) ORDER BY strategy NULLS FIRST, metric")]),
     "04_lakebase_app.md": ("Lakebase serving + AESO Market Pulse app (deployed)", [("aeso-hourly", "lakebase_sync")], [
         ("Ops actions copied back to Delta (written by the app into Lakebase)", f"SELECT action_id, action_type, window_start_mpt, window_end_mpt, mw, threshold, note FROM {FQ}.ops_actions_history ORDER BY action_id"),
         ("Synced tables registered in Unity Catalog", f"SELECT table_name, table_type, comment FROM energy_canada_demos_catalog.information_schema.tables WHERE table_schema = 'aeso_price_forecast' AND table_name LIKE '%_synced'")]),
+    "06_model_lifecycle.md": ("Self-improving models: weekly challenger, model update trigger, gated promotion", [
+        ("aeso-weekly-retrain", "train_challenger"), ("aeso-evaluate-challenger", "evaluate_and_promote")], [
+        ("Promotion decisions", f"SELECT evaluated_at, champion_version, challenger_version, decision, ROUND(champion_capture_rate_pct,1) AS champ_capture, ROUND(challenger_capture_rate_pct,1) AS chall_capture, ROUND(champion_mae_cad_mwh,2) AS champ_mae, ROUND(challenger_mae_cad_mwh,2) AS chall_mae, eval_start, eval_end FROM {FQ}.aeso_model_promotions ORDER BY evaluated_at"),
+        ("Hourly forecasts archived per champion version (live accuracy input)", f"SELECT champion_version, COUNT(DISTINCT model_run_timestamp) AS runs, COUNT(*) AS forecast_hours, MIN(model_run_timestamp) AS first_run_utc, MAX(model_run_timestamp) AS last_run_utc FROM {FQ}.aeso_forecast_history GROUP BY 1 ORDER BY 1")]),
 }
 APP_URL = "https://aeso-market-pulse-7474654566745717.aws.databricksapps.com"
 

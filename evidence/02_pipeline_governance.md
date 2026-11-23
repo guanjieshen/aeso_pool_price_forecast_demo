@@ -1,10 +1,10 @@
 # Declarative pipeline (silver/gold, expectations) and Unity Catalog governance
 
-Exported 2026-11-22 19:13 UTC by `scripts/export_evidence.py` from the live workspace. Full cell output regenerates into the git-ignored `evidence/raw/`.
+Exported 2026-11-23 16:06 UTC by `scripts/export_evidence.py` from the live workspace. Full cell output regenerates into the git-ignored `evidence/raw/`.
 
 ## Task `governance` (job `aeso-hourly`)
 
-Job run `683048180465385` · task run `588131077961485` · **SUCCESS** · 30s · full output `evidence/raw/aeso-hourly__governance.md` (local)
+Job run `1062095509219844` · task run `251804670884760` · **SUCCESS** · 27s · full output `evidence/raw/aeso-hourly__governance.md` (local)
 
 ```text
 tagged table: aeso_pool_price layer=bronze data_product=data_engineering source=aeso_api_public
@@ -18,11 +18,16 @@ tagged table: aeso_backtest_metrics layer=gold data_product=machine_learning sou
 tagged table: aeso_backtest_detail layer=gold data_product=machine_learning source=model_output
 tagged table: aeso_business_value layer=gold data_product=analytics source=model_output
 tagged table: ops_actions_history layer=gold data_product=analytics source=app_write_back
+tagged table: aeso_forecast_history layer=gold data_product=machine_learning source=model_output
+tagged table: aeso_model_promotions layer=gold data_product=machine_learning source=model_lifecycle
+skip (not created yet): aeso_live_accuracy
 
 table_name tag_name tag_value
       aeso_backtest_detail    layer      gold
      aeso_backtest_metrics    layer      gold
        aeso_business_value    layer      gold
+     aeso_forecast_history    layer      gold
+     aeso_model_promotions    layer      gold
            aeso_pool_price    layer    bronze
 aeso_price_forecast_output    layer      gold
   aeso_wind_solar_forecast    layer    bronze
@@ -43,10 +48,7 @@ ce289c66-8347-4eea-a427-6b4f20fe6b76          USE SCHEMA     SCHEMA energy_canad
               field-energy-canada-ae              SELECT    CATALOG                     energy_canada_demos_catalog
               field-energy-canada-ae          USE SCHEMA    CATALOG                     energy_canada_demos_catalog
               field-energy-canada-sa      ALL PRIVILEGES    CATALOG                     energy_canada_demos_catalog
-              field-energy-canada-sa              SELECT    CATALOG                     energy_canada_demos_catalog
-              field-energy-canada-sa          USE SCHEMA    CATALOG                     energy_canada_demos_catalog
-                          canada-dsa       CREATE VOLUME    CATALOG                     energy_canada_demos_catalog
-                          canada-dsa              MODIFY    CATALOG          
+              field-energy-canada-sa              SELECT    CATALOG                     energ
 ```
 
 ## Query: Wind/solar regressor source (how much is imputed)
@@ -55,14 +57,14 @@ ce289c66-8347-4eea-a427-6b4f20fe6b76          USE SCHEMA     SCHEMA energy_canad
 |---|---|
 | metered | 7751 |
 | csv_forecast | 168 |
-| csv_actual | 51 |
+| csv_actual | 72 |
 | imputed | 10 |
 
 ## Query: Gold features
 
 | rows | settled | first_mpt | last_mpt | imputed_hours |
 |---|---|---|---|---|
-| 7980 | 7812 | 2026-01-01T00:00:00.000Z | 2026-11-29T11:00:00.000Z | 10 |
+| 8001 | 7832 | 2026-01-01T00:00:00.000Z | 2026-11-30T08:00:00.000Z | 10 |
 
 ## Query: Governed tags per table
 
@@ -77,6 +79,12 @@ ce289c66-8347-4eea-a427-6b4f20fe6b76          USE SCHEMA     SCHEMA energy_canad
 | aeso_business_value | data_product | analytics |
 | aeso_business_value | domain | operations |
 | aeso_business_value | layer | gold |
+| aeso_forecast_history | data_product | machine_learning |
+| aeso_forecast_history | domain | operations |
+| aeso_forecast_history | layer | gold |
+| aeso_model_promotions | data_product | machine_learning |
+| aeso_model_promotions | domain | operations |
+| aeso_model_promotions | layer | gold |
 | aeso_pool_price | data_product | data_engineering |
 | aeso_pool_price | domain | operations |
 | aeso_pool_price | layer | bronze |
@@ -113,6 +121,7 @@ ce289c66-8347-4eea-a427-6b4f20fe6b76          USE SCHEMA     SCHEMA energy_canad
 | energy_canada_demos_catalog.aeso_price_forecast.aeso_wind_solar_metered | energy_canada_demos_catalog.aeso_price_forecast.silver_wind_solar_hourly | PIPELINE |
 | energy_canada_demos_catalog.aeso_price_forecast.silver_pool_price_hourly | energy_canada_demos_catalog.aeso_price_forecast.gold_price_features_hourly | PIPELINE |
 | energy_canada_demos_catalog.aeso_price_forecast.silver_pool_price_hourly | energy_canada_demos_catalog.aeso_price_forecast.pool_price_hourly_synced | PIPELINE |
+| energy_canada_demos_catalog.aeso_price_forecast.silver_pool_price_hourly | energy_canada_demos_catalog.aeso_price_forecast.silver_pool_price_hourly | PIPELINE |
 | energy_canada_demos_catalog.aeso_price_forecast.silver_wind_solar_hourly | energy_canada_demos_catalog.aeso_price_forecast.gold_price_features_hourly | PIPELINE |
 
 ## UC secret governance (REST, value never read)

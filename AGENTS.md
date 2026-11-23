@@ -12,7 +12,7 @@ A day-ahead Alberta pool price forecast that helps Enbridge Liquids Pipelines pr
 | --- | --- | --- | --- |
 | **Ingest + transform** | Hourly Lakeflow Job: AESO API and CSV into bronze (MERGE), declarative pipeline to silver/gold | `src/ingest/`, `src/pipeline/`, `resources/data_and_ml.yml` | [agents/data.md](agents/data.md) |
 | **Governance** | Governed tags, comments, grants, the AESO key as a UC secret | `src/governance/` | [agents/data.md](agents/data.md) |
-| **ML** | HMM + Prophet + Monte Carlo ensemble, walk-forward backtest, MLflow, UC model, business value | `src/ml/`, `resources/data_and_ml.yml` | [agents/ml.md](agents/ml.md) |
+| **ML** | HMM + Prophet + Monte Carlo ensemble, walk-forward backtest, MLflow, UC model, business value, and the **self-improving lifecycle** (weekly challenger, model update trigger, gated promotion, drift monitor) | `src/ml/`, `resources/data_and_ml.yml` | [agents/ml.md](agents/ml.md) |
 | **Serving** | Lakebase synced tables and `ops_actions` write-back, the AESO Market Pulse app | `app/`, `src/lakebase/`, `resources/serving.yml` | [agents/app.md](agents/app.md) |
 | **AI** | Genie space, benchmark, Genie One deep links | `src/genie/`, `resources/serving.yml`, `scripts/genie_benchmark.py` | [agents/genie.md](agents/genie.md) |
 | **Evidence** | Text output of real runs, for reviewers | `evidence/`, `scripts/export_evidence.py` | [agents/evidence.md](agents/evidence.md) |
@@ -46,7 +46,7 @@ A day-ahead Alberta pool price forecast that helps Enbridge Liquids Pipelines pr
 | You change | Also change |
 | --- | --- |
 | An ingest notebook or the pipeline | `agents/data.md` if a rule or gotcha changed; rerun `aeso_hourly`; refresh `evidence/01_*`, `02_*` |
-| A model, weight or metric | `agents/ml.md`, `docs/decisions.md` (new row); rerun `aeso_daily_backtest`; refresh `evidence/03_ml_backtest.md`; update the numbers in `FE_BAR.md` |
+| A model, weight or metric | `agents/ml.md`, `docs/decisions.md` (new row); submit it as a challenger (skill `retrain-and-backtest`); refresh `evidence/03_ml_backtest.md` and `06_model_lifecycle.md`; update the numbers in `FE_BAR.md` |
 | A column the app or Genie reads | Producer + `app/app.py` + `src/genie/` + `src/governance/setup_uc.py` in one PR |
 | A new table | `TABLES` in `src/governance/setup_uc.py`; the table list in `docs/IMPLEMENTATION_PLAN.md` |
 | An app card | `agents/app.md` (card to query map and design rules), the card's Genie One prompt |

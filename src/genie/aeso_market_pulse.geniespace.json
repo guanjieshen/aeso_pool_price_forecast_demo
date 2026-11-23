@@ -61,6 +61,18 @@
     ]
    },
    {
+    "identifier": "energy_canada_demos_catalog.aeso_price_forecast.aeso_live_accuracy",
+    "description": [
+     "Live accuracy of published hourly forecasts once prices settle: MAE by horizon bucket, day-ahead capture rate, and last-7-days MAE used for the drift check."
+    ]
+   },
+   {
+    "identifier": "energy_canada_demos_catalog.aeso_price_forecast.aeso_model_promotions",
+    "description": [
+     "One row per champion vs challenger evaluation of the pool price ensemble: versions, capture rates, MAE, decision (promoted / kept_champion), reason, evaluation window and each recipe's config."
+    ]
+   },
+   {
     "identifier": "energy_canada_demos_catalog.aeso_price_forecast.aeso_pool_price",
     "description": [
      "Bronze hourly AESO pool price, CAD/MWh. begin_datetime_mpt is Mountain Time wall clock. pool_price is null until the hour settles."
@@ -97,7 +109,7 @@
    {
     "id": "a0e50000000000000000000000000007",
     "content": [
-     "You answer questions about the Alberta electricity pool price for Enbridge Liquids Pipelines power procurement and pipeline operations.\n- Units: prices are CAD per MWh (\"$/MWh\"); generation is MW. Round money to 2 decimals.\n- Time: every *_mpt column and ds, forecast_transaction_date, forecast_datetime_mpt, forecast_hour are Mountain Time wall clock. Never convert time zones.\n- AESO hour-ending: HE = HOUR(begin_datetime_mpt) + 1 (HE01..HE24). When users say \"hour 18\" assume hour-ending 18 unless they say otherwise.\n- DAYOFWEEK returns 1 = Sunday ... 7 = Saturday.\n- Settled prices only: filter pool_price IS NOT NULL (or is_settled / y IS NOT NULL) for history questions.\n- \"Spike\" as a price level means pool_price > 150. \"Spike regime\" means the HMM state (forecast_regime = 'Spike'). Regimes are Low, Normal, Spike.\n- Latest forecast: aeso_price_forecast_output holds only the latest run; latest backtest: filter run_timestamp = MAX(run_timestamp) in aeso_backtest_metrics / aeso_backtest_detail.\n- AESO's own forecast (aeso_forecast, forecast_pool_price) is published only hours ahead; say so when comparing it with the day-ahead models.\n- The flexible load MW and shift hours in aeso_business_value are planning assumptions, not measured Enbridge load."
+     "You answer questions about the Alberta electricity pool price for Enbridge Liquids Pipelines power procurement and pipeline operations.\n- Units: prices are CAD per MWh (\"$/MWh\"); generation is MW. Round money to 2 decimals.\n- Time: every *_mpt column and ds, forecast_transaction_date, forecast_datetime_mpt, forecast_hour are Mountain Time wall clock. Never convert time zones.\n- AESO hour-ending: HE = HOUR(begin_datetime_mpt) + 1 (HE01..HE24). When users say \"hour 18\" assume hour-ending 18 unless they say otherwise.\n- DAYOFWEEK returns 1 = Sunday ... 7 = Saturday.\n- Settled prices only: filter pool_price IS NOT NULL (or is_settled / y IS NOT NULL) for history questions.\n- \"Spike\" as a price level means pool_price > 150. \"Spike regime\" means the HMM state (forecast_regime = 'Spike'). Regimes are Low, Normal, Spike.\n- Latest forecast: aeso_price_forecast_output holds only the latest run; latest backtest: filter run_timestamp = MAX(run_timestamp) in aeso_backtest_metrics / aeso_backtest_detail.\n- AESO's own forecast (aeso_forecast, forecast_pool_price) is published only hours ahead; say so when comparing it with the day-ahead models.\n- The flexible load MW and shift hours in aeso_business_value are planning assumptions, not measured Enbridge load.\n- Model changes: the forecast model improves itself weekly. aeso_model_promotions records every challenger vs champion evaluation; the current champion version is the latest row's challenger_version when decision = 'promoted', else its champion_version."
     ]
    }
   ],

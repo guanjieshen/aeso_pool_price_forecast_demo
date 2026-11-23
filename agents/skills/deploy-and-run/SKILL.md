@@ -11,7 +11,7 @@ description: Use to deploy the bundle, run or debug the hourly and daily jobs, r
 | 2. Validate | `databricks bundle validate` | Prints host and `/Workspace/Users/<you>/aeso-market-pulse` |
 | 3. Deploy | `databricks bundle deploy` | `Resources: ... created/changed` |
 | 4. Hourly run | `databricks bundle run aeso_hourly` | `TERMINATED SUCCESS`; about 4 minutes |
-| 5. Backtest run | `databricks bundle run aeso_daily_backtest` | `TERMINATED SUCCESS`; new `@champion` version |
+| 5. Retrain | `databricks bundle run aeso_weekly_retrain` | Registers `@challenger`; `aeso-evaluate-challenger` starts by itself within about a minute |
 
 ## Common tasks
 

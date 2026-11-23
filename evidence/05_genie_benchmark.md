@@ -1,16 +1,16 @@
 # Genie benchmark: 8/8 correct
 
-Space `01f1e6a1b931196f80593b589abbc529` (AESO Market Pulse Genie), run 2026-11-22 18:25 UTC by `scripts/genie_benchmark.py`. Ground truth comes from SQL written by hand; a question passes when every expected value appears in Genie's result (numbers within 1%).
+Space `01f1e6a1b931196f80593b589abbc529` (AESO Market Pulse Genie), run 2026-11-23 16:09 UTC by `scripts/genie_benchmark.py`. Ground truth comes from SQL written by hand; a question passes when every expected value appears in Genie's result (numbers within 1%).
 
 | # | Question | Expected | Genie returned | Result |
 |---|---|---|---|---|
 | 1 | What was the average settled pool price in October 2026? | 51.33 | 51.33 | PASS |
-| 2 | What was the highest pool price so far in 2026? | 999.99 | 999.99, 2026-05-25T20:00:00.000Z, 999.99, 2026-05-28T20:00:00.000Z | PASS |
+| 2 | What was the highest pool price so far in 2026? | 999.99 | 2026-05-25T20:00:00.000Z, 999.99, 2026-05-28T20:00:00.000Z, 999.99 | PASS |
 | 3 | How many hours in 2026 settled above $150/MWh? | 200 | 200 | PASS |
-| 4 | Which model (not a baseline) had the lowest MAE in the latest backtest, and what was its MAE? | ensemble, 9.7 | ensemble, 9.7 | PASS |
-| 5 | What is the average ensemble forecast price over the next 24 hours? | 23.81 | 23.81 | PASS |
-| 6 | Which hour-ending had the highest average pool price over the last 90 days? | 20 | 20, 110.58 | PASS |
-| 7 | What was the average pool price in 2026 in hours when actual wind and solar generation was above 3,000 MW? | 6.73 | 6.73, 2234 | PASS |
+| 4 | Which model (not a baseline) had the lowest MAE in the latest backtest, and what was its MAE? | ensemble, 6.61 | ensemble, 6.61 | PASS |
+| 5 | What is the average ensemble forecast price over the next 24 hours? | 18.88 | 18.88 | PASS |
+| 6 | Which hour-ending had the highest average pool price over the last 90 days? | 20 | 20, 103.76 | PASS |
+| 7 | What was the average pool price in 2026 in hours when actual wind and solar generation was above 3,000 MW? | 6.74 | 6.74 | PASS |
 | 8 | How many spike alerts have operators logged? | 2 | 2 | PASS |
 
 ## SQL Genie generated
@@ -30,21 +30,21 @@ WHERE `pool_price` IS NOT NULL
 ```sql
 WITH ranked_prices AS (
   SELECT
-    `begin_datetime_mpt`,
-    `pool_price`,
-    RANK() OVER (ORDER BY `pool_price` DESC) AS `price_rank`
-  FROM `energy_canada_demos_catalog`.`aeso_price_forecast`.`aeso_pool_price`
-  WHERE `pool_price` IS NOT NULL
-    AND `begin_datetime_mpt` IS NOT NULL
-    AND `begin_datetime_mpt` >= TIMESTAMP('2026-01-01 00:00:00')
-    AND `begin_datetime_mpt` < TIMESTAMP('2027-01-01 00:00:00')
+    aeso_pool_price.begin_datetime_mpt,
+    aeso_pool_price.pool_price,
+    RANK() OVER (ORDER BY aeso_pool_price.pool_price DESC) AS price_rank
+  FROM energy_canada_demos_catalog.aeso_price_forecast.aeso_pool_price
+  WHERE aeso_pool_price.pool_price IS NOT NULL
+    AND aeso_pool_price.begin_datetime_mpt IS NOT NULL
+    AND aeso_pool_price.begin_datetime_mpt >= TIMESTAMP '2026-01-01 00:00:00'
+    AND aeso_pool_price.begin_datetime_mpt < TIMESTAMP '2027-01-01 00:00:00'
 )
 SELECT
-  ROUND(`pool_price`, 2) AS `highest_pool_price_cad_mwh`,
-  `begin_datetime_mpt`
+  ranked_prices.begin_datetime_mpt,
+  ROUND(ranked_prices.pool_price, 2) AS pool_price
 FROM ranked_prices
-WHERE `price_rank` <= 1
-ORDER BY `begin_datetime_mpt`
+WHERE ranked_prices.price_rank = 1
+ORDER BY ranked_prices.begin_datetime_mpt
 ```
 
 **3. How many hours in 2026 settled above $150/MWh?**
@@ -61,21 +61,22 @@ WHERE `pool_price` IS NOT NULL
 **4. Which model (not a baseline) had the lowest MAE in the latest backtest, and what was its MAE?**
 
 ```sql
-WITH `latest_models` AS (
+WITH latest_run AS (
+  SELECT MAX(`run_timestamp`) AS `max_run_timestamp`
+  FROM `energy_canada_demos_catalog`.`aeso_price_forecast`.`aeso_backtest_metrics`
+), ranked_models AS (
   SELECT
     `model_name`,
-    `mae_cad_mwh`,
+    ROUND(`mae_cad_mwh`, 2) AS `mae_cad_mwh`,
     RANK() OVER (ORDER BY `mae_cad_mwh` ASC) AS `mae_rank`
   FROM `energy_canada_demos_catalog`.`aeso_price_forecast`.`aeso_backtest_metrics`
-  WHERE `run_timestamp` = (
-    SELECT MAX(`run_timestamp`)
-    FROM `energy_canada_demos_catalog`.`aeso_price_forecast`.`aeso_backtest_metrics`
-  )
+  WHERE `run_timestamp` = (SELECT `max_run_timestamp` FROM latest_run)
     AND `model_type` = 'model'
     AND `mae_cad_mwh` IS NOT NULL
+    AND `model_name` IS NOT NULL
 )
-SELECT `model_name`, ROUND(`mae_cad_mwh`, 2) AS `mae_cad_mwh`
-FROM `latest_models`
+SELECT `model_name`, `mae_cad_mwh`
+FROM ranked_models
 WHERE `mae_rank` <= 1
 ORDER BY `mae_cad_mwh` ASC, `model_name` ASC
 ```
@@ -94,7 +95,7 @@ WHERE `ensemble_forecast_price` IS NOT NULL
 WITH `hourly_avg` AS (
   SELECT
     HOUR(`begin_datetime_mpt`) + 1 AS `hour_ending`,
-    ROUND(AVG(`pool_price`), 2) AS `avg_pool_price`
+    ROUND(AVG(`pool_price`), 2) AS `avg_pool_price_cad_mwh`
   FROM `energy_canada_demos_catalog`.`aeso_price_forecast`.`aeso_pool_price`
   WHERE `pool_price` IS NOT NULL
     AND `begin_datetime_mpt` IS NOT NULL
@@ -107,25 +108,22 @@ WITH `hourly_avg` AS (
 ), `ranked` AS (
   SELECT
     `hour_ending`,
-    `avg_pool_price`,
-    RANK() OVER (ORDER BY `avg_pool_price` DESC) AS `price_rank`
-  FROM `hourly_avg`
-)
-
+    `avg_pool_price_cad_mwh`,
+    RANK() OVER (ORDER BY `avg_pool_price_cad_mwh` DESC, `hour_ending` 
 ```
 
 **7. What was the average pool price in 2026 in hours when actual wind and solar generation was above 3,000 MW?**
 
 ```sql
-SELECT ROUND(AVG(`aeso_pool_price`.`pool_price`), 2) AS `avg_pool_price_cad_mwh`, COUNT(*) AS `hours`
+SELECT ROUND(AVG(`aeso_pool_price`.`pool_price`), 2) AS `avg_pool_price_cad_mwh`
 FROM `energy_canada_demos_catalog`.`aeso_price_forecast`.`aeso_pool_price` AS `aeso_pool_price`
 INNER JOIN `energy_canada_demos_catalog`.`aeso_price_forecast`.`silver_wind_solar_hourly` AS `silver_wind_solar_hourly`
   ON `aeso_pool_price`.`begin_datetime_mpt` = `silver_wind_solar_hourly`.`forecast_transaction_date`
 WHERE `aeso_pool_price`.`pool_price` IS NOT NULL
-  AND `silver_wind_solar_hourly`.`actual_mw` IS NOT NULL
-  AND `silver_wind_solar_hourly`.`actual_mw` > 3000
   AND `aeso_pool_price`.`begin_datetime_mpt` >= TIMESTAMP('2026-01-01 00:00:00')
-  AND `aeso_pool_price`.`begin_datetime_mp
+  AND `aeso_pool_price`.`begin_datetime_mpt` < TIMESTAMP('2027-01-01 00:00:00')
+  AND `silver_wind_solar_hourly`.`actual_mw` IS NOT NULL
+  AND `silver_wind_solar_hourly`.`a
 ```
 
 **8. How many spike alerts have operators logged?**
@@ -133,5 +131,6 @@ WHERE `aeso_pool_price`.`pool_price` IS NOT NULL
 ```sql
 SELECT COUNT(*) AS `spike_alert_count`
 FROM `energy_canada_demos_catalog`.`aeso_price_forecast`.`ops_actions_history`
-WHERE `action_type` ILIKE '%spike_alert%'
+WHERE `action_type` IS NOT NULL
+  AND `action_type` ILIKE '%spike_alert%'
 ```
