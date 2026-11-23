@@ -20,23 +20,33 @@ FQ = f"{CATALOG}.{SCHEMA}"
 # Table -> (layer, data_product, data_source). layer and data_product are governed tags (allowed values are
 # enforced by tag policies). Tables that do not exist yet are skipped and governed on a later run.
 TABLES = {
-    "aeso_pool_price": ("bronze", "data_engineering", "aeso_api_public"),
-    "aeso_wind_solar_forecast": ("bronze", "data_engineering", "aeso_csv_public"),
-    "aeso_wind_solar_metered": ("bronze", "data_engineering", "aeso_api_public"),
-    "aeso_supply_demand_hourly": ("bronze", "data_engineering", "aeso_api_public"),
-    "aeso_wind_solar_published": ("bronze", "data_engineering", "aeso_csv_public"),
-    "aeso_fundamentals_snapshots": ("bronze", "data_engineering", "aeso_api_public"),
-    "aeso_outage_outlook": ("bronze", "data_engineering", "aeso_report_public"),
-    "silver_supply_demand_hourly": ("silver", "data_engineering", "derived"),
-    "aeso_price_drivers": ("gold", "analytics", "derived"),
-    "aeso_backtest_windows": ("gold", "machine_learning", "model_output"),
+    # bronze: streaming tables the pipeline ingests from the raw landing volume
+    "bronze_pool_price": ("bronze", "data_engineering", "aeso_api_public"),
+    "bronze_wind_solar_forecast": ("bronze", "data_engineering", "aeso_csv_public"),
+    "bronze_wind_solar_metered": ("bronze", "data_engineering", "aeso_api_public"),
+    "bronze_load": ("bronze", "data_engineering", "aeso_api_public"),
+    "bronze_gen_capacity": ("bronze", "data_engineering", "aeso_api_public"),
+    "bronze_intertie": ("bronze", "data_engineering", "aeso_api_public"),
+    "bronze_wind_solar_published": ("bronze", "data_engineering", "aeso_csv_public"),
+    "bronze_outage_outlook": ("bronze", "data_engineering", "aeso_report_public"),
+    # silver: conformed (typed, latest per key) and modelling views
+    "aeso_pool_price": ("silver", "data_engineering", "derived"),
+    "aeso_wind_solar_forecast": ("silver", "data_engineering", "derived"),
+    "aeso_wind_solar_metered": ("silver", "data_engineering", "derived"),
+    "aeso_supply_demand_hourly": ("silver", "data_engineering", "derived"),
+    "aeso_wind_solar_published": ("silver", "data_engineering", "derived"),
+    "aeso_fundamentals_snapshots": ("silver", "data_engineering", "derived"),
+    "aeso_outage_outlook": ("silver", "data_engineering", "derived"),
     "silver_pool_price_hourly": ("silver", "data_engineering", "derived"),
     "silver_wind_solar_hourly": ("silver", "data_engineering", "derived"),
+    "silver_supply_demand_hourly": ("silver", "data_engineering", "derived"),
     "gold_price_features_hourly": ("gold", "analytics", "derived"),
     "aeso_price_forecast_output": ("gold", "machine_learning", "model_output"),
     "aeso_backtest_metrics": ("gold", "machine_learning", "model_output"),
     "aeso_backtest_detail": ("gold", "machine_learning", "model_output"),
+    "aeso_backtest_windows": ("gold", "machine_learning", "model_output"),
     "aeso_business_value": ("gold", "analytics", "model_output"),
+    "aeso_price_drivers": ("gold", "analytics", "derived"),
     "ops_actions_history": ("gold", "analytics", "app_write_back"),
     "aeso_forecast_history": ("gold", "machine_learning", "model_output"),
     "aeso_model_promotions": ("gold", "machine_learning", "model_lifecycle"),
@@ -52,7 +62,8 @@ for table, (layer, product, source) in TABLES.items():
         print(f"skip (not created yet): {table}")
         continue
     kind = spark.sql(f"DESCRIBE TABLE EXTENDED {FQ}.{table}").filter("col_name = 'Type'").first()
-    keyword = "MATERIALIZED VIEW" if kind and "MATERIALIZED" in kind.data_type.upper() else "TABLE"
+    kind_name = kind.data_type.upper() if kind else ""
+    keyword = "MATERIALIZED VIEW" if "MATERIALIZED" in kind_name else "STREAMING TABLE" if "STREAMING" in kind_name else "TABLE"
     spark.sql(f"ALTER {keyword} {FQ}.{table} SET TAGS ('domain' = 'operations', 'layer' = '{layer}', "
               f"'classification' = 'public', 'data_product' = '{product}', 'subject_area' = 'power_market', "
               f"'data_source' = '{source}')")

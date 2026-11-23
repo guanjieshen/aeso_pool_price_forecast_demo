@@ -1,4 +1,4 @@
-"""Lakeflow Spark Declarative Pipeline: bronze AESO tables -> silver -> gold features.
+"""Lakeflow Spark Declarative Pipeline, part 2: conformed silver (ingest.py) -> modelling silver -> gold features.
 
 Materialized views, recomputed on every hourly job run. Expectations drop rows that cannot be right
 (missing keys, prices outside the AESO market range) and record soft warnings for the rest.
@@ -11,7 +11,8 @@ SCHEMA = spark.conf.get("aeso.schema")
 spark.conf.set("spark.sql.session.timeZone", "UTC")  # *_mpt columns are naive Mountain Time wall clock
 
 def bronze(name):
-    return spark.read.table(f"{CATALOG}.{SCHEMA}.{name}")
+    """A conformed silver dataset from ingest.py (same pipeline), built from the raw landing files."""
+    return spark.read.table(name)
 
 
 @dp.materialized_view(comment="Silver: hourly AESO pool price, deduplicated and range-checked, with AESO hour-ending.")

@@ -1,28 +1,30 @@
 # Databricks notebook source
 # MAGIC %md
-# MAGIC # Load AESO Wind Solar Metered History
-# MAGIC The public wind/solar CSV only covers about 2 days back, too short to train Prophet's wind regressor or
-# MAGIC to backtest. This notebook rebuilds **actual** hourly wind and solar generation from the AESO metered
-# MAGIC volume API: it finds every WIND and SOLAR asset in the current supply/demand report, pulls their hourly
-# MAGIC metered MWh, and sums them per hour. Metered data lags about 2 to 3 days; the CSV covers that gap.
+# MAGIC # AESO wind + solar metered volumes: fetch and land raw
+# MAGIC The public wind/solar CSV holds only about 2 days of actuals, too short to train on. This notebook finds every
+# MAGIC WIND and SOLAR asset in the current supply/demand report and **lands their hourly metered volume records as
+# MAGIC returned** (one JSON line per asset-hour, tagged with the asset's fuel type) in `raw/wind_solar_metered/`.
+# MAGIC The pipeline ingests them into `bronze_wind_solar_metered` and sums them per hour into `aeso_wind_solar_metered`.
+# MAGIC Metered data lags about 2 to 3 days and is revised, so each run re-lands the last few days.
 
 # COMMAND ----------
 
 dbutils.widgets.text("catalog", "energy_canada_demos_catalog")
 dbutils.widgets.text("schema", "aeso_price_forecast")
-dbutils.widgets.dropdown("full_refresh", "false", ["false", "true"])  # true: re-pull everything from the bootstrap date
+dbutils.widgets.dropdown("full_refresh", "false", ["false", "true"])  # true: re-land everything from the bootstrap date
 CATALOG, SCHEMA = dbutils.widgets.get("catalog"), dbutils.widgets.get("schema")
-TARGET = f"{CATALOG}.{SCHEMA}.aeso_wind_solar_metered"
+FQ = f"{CATALOG}.{SCHEMA}"
+LANDING = f"/Volumes/{CATALOG}/{SCHEMA}/raw"
 BOOTSTRAP_DATE = "2026-01-01"
-LOOKBACK_DAYS = 5          # re-pull recent days: metered volumes are revised after the fact
+LOOKBACK_DAYS = 5          # metered volumes are revised after the fact
 ASSETS_PER_CALL = 10       # the API rejects longer asset_ID lists (400 at 25)
 API = "https://apimgw.aeso.ca/public/"
 spark.conf.set("spark.sql.session.timeZone", "UTC")
 
 # COMMAND ----------
 
-from collections import defaultdict
-from datetime import date, datetime, timedelta
+import json, os
+from datetime import date, datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
 import requests
 
@@ -38,74 +40,37 @@ assets = get("currentsupplydemand-api/v1/csd/generation/assets/current")["asset_
 fuel_of = {a["asset"]: a["fuel_type"] for a in assets if a["fuel_type"] in ("WIND", "SOLAR")}
 print(f"Wind assets: {sum(f == 'WIND' for f in fuel_of.values())}, solar assets: {sum(f == 'SOLAR' for f in fuel_of.values())}")
 
-# COMMAND ----------
-
-spark.sql(f"""
-CREATE TABLE IF NOT EXISTS {TARGET} (
-  begin_datetime_utc TIMESTAMP NOT NULL COMMENT 'Hour start, UTC. Primary key.',
-  begin_datetime_mpt TIMESTAMP COMMENT 'Hour start, Mountain Time wall clock (timezone-naive).',
-  wind_mw DOUBLE COMMENT 'Sum of metered wind generation for the hour, MWh (= average MW).',
-  solar_mw DOUBLE COMMENT 'Sum of metered solar generation for the hour, MWh (= average MW).',
-  wind_solar_mw DOUBLE COMMENT 'wind_mw + solar_mw.',
-  asset_count INT COMMENT 'Number of wind and solar assets reporting in the hour.',
-  loaded_at TIMESTAMP COMMENT 'When this row was last written (UTC).'
-) COMMENT 'Bronze: hourly wind and solar generation rebuilt from AESO metered volumes per asset.'
-""")
-last = spark.sql(f"SELECT CAST(MAX(begin_datetime_mpt) AS DATE) AS d FROM {TARGET}").first().d
+last = None
+if dbutils.widgets.get("full_refresh") != "true" and spark.catalog.tableExists(f"{FQ}.aeso_wind_solar_metered"):
+    last = spark.sql(f"SELECT CAST(MAX(begin_datetime_mpt) AS DATE) AS d FROM {FQ}.aeso_wind_solar_metered").first().d
 today = datetime.now(ZoneInfo("America/Edmonton")).date()
-full_refresh = dbutils.widgets.get("full_refresh") == "true"
-start = date.fromisoformat(BOOTSTRAP_DATE) if last is None or full_refresh else last - timedelta(days=LOOKBACK_DAYS)
+start = date.fromisoformat(BOOTSTRAP_DATE) if last is None else last - timedelta(days=LOOKBACK_DAYS)
 print(f"Fetching metered volumes {start} .. {today}")
 
 # COMMAND ----------
 
-hourly = defaultdict(lambda: {"WIND": 0.0, "SOLAR": 0.0, "n": 0})
-ids = sorted(fuel_of)
-cursor = start
-while cursor <= today:
-    window_end = min(cursor + timedelta(days=30), today)
-    for i in range(0, len(ids), ASSETS_PER_CALL):
-        chunk = ids[i:i + ASSETS_PER_CALL]
-        # endDate is exclusive on this endpoint (unlike the pool price report), so ask for one day past the window.
-        for participant in get("meteredvolume-api/v1/meteredvolume/details", startDate=cursor.isoformat(),
-                               endDate=(window_end + timedelta(days=1)).isoformat(), asset_ID=",".join(chunk)):
-            for asset in participant["asset_list"]:
-                fuel = fuel_of.get(asset["asset_ID"])
-                for m in asset["metered_volume_list"]:
-                    key = (m["begin_date_utc"], m["begin_date_mpt"])
-                    hourly[key][fuel] += float(m["metered_volume"] or 0)
-                    hourly[key]["n"] += 1
-    print(f"  {cursor} .. {window_end}: {len(hourly)} hours so far")
-    cursor = window_end + timedelta(days=1)
-
-if not hourly:
-    dbutils.notebook.exit("No metered volumes returned; nothing to merge.")
-
-# COMMAND ----------
-
-from pyspark.sql import functions as F
-
-fmt = "%Y-%m-%d %H:%M"
-rows = [(datetime.strptime(u, fmt), datetime.strptime(m, fmt), v["WIND"], v["SOLAR"], v["WIND"] + v["SOLAR"], v["n"])
-        for (u, m), v in hourly.items()]
-src = (spark.createDataFrame(rows, "begin_datetime_utc timestamp, begin_datetime_mpt timestamp, wind_mw double, "
-                                   "solar_mw double, wind_solar_mw double, asset_count int")
-       .withColumn("loaded_at", F.current_timestamp()))
-src.createOrReplaceTempView("metered_updates")
-result = spark.sql(f"""
-MERGE INTO {TARGET} t USING metered_updates s ON t.begin_datetime_utc = s.begin_datetime_utc
-WHEN MATCHED THEN UPDATE SET * WHEN NOT MATCHED THEN INSERT *""").first()
-print(f"MERGE: {result.asDict()}")
-
-# COMMAND ----------
-
-# MAGIC %md ## Verification
-
-# COMMAND ----------
-
-summary = spark.sql(f"""
-SELECT COUNT(*) AS total_hours, MIN(begin_datetime_mpt) AS first_hour_mpt, MAX(begin_datetime_mpt) AS last_hour_mpt,
-       ROUND(AVG(wind_mw), 1) AS avg_wind_mw, ROUND(AVG(solar_mw), 1) AS avg_solar_mw,
-       ROUND(MAX(wind_solar_mw), 1) AS max_wind_solar_mw, ROUND(AVG(asset_count), 1) AS avg_assets_reporting
-FROM {TARGET}""")
-print(summary.toPandas().to_string(index=False))
+fetched_at = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+folder = f"{LANDING}/wind_solar_metered/{fetched_at[:10]}"
+os.makedirs(folder, exist_ok=True)
+path = f"{folder}/wind_solar_metered_{fetched_at.replace(':', '')}.jsonl"
+ids, n, cursor = sorted(fuel_of), 0, start
+with open(path, "w") as out:
+    while cursor <= today:
+        window_end = min(cursor + timedelta(days=30), today)
+        for i in range(0, len(ids), ASSETS_PER_CALL):
+            # endDate is exclusive on this endpoint (unlike the pool price report), so ask for one day past the window.
+            for participant in get("meteredvolume-api/v1/meteredvolume/details", startDate=cursor.isoformat(),
+                                   endDate=(window_end + timedelta(days=1)).isoformat(),
+                                   asset_ID=",".join(ids[i:i + ASSETS_PER_CALL])):
+                for asset in participant["asset_list"]:
+                    for m in asset["metered_volume_list"]:
+                        out.write(json.dumps({"pool_participant_ID": participant["pool_participant_ID"],
+                                              "asset_ID": asset["asset_ID"], "fuel_type": fuel_of.get(asset["asset_ID"]),
+                                              **m, "fetched_at": fetched_at}) + "\n")
+                        n += 1
+        print(f"  {cursor} .. {window_end}: {n} asset-hour records so far")
+        cursor = window_end + timedelta(days=1)
+if n == 0:
+    os.remove(path)
+    dbutils.notebook.exit("No metered volumes returned; nothing landed.")
+print(f"Landed {n} raw asset-hour records -> {path}")

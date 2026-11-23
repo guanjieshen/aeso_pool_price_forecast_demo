@@ -1,6 +1,13 @@
 # Phases 1-2: hourly ingest -> declarative pipeline -> forecast -> Lakebase sync -> governance,
 # plus the self-improving model lifecycle (weekly retrain, triggered evaluation, daily monitor) and the experiment.
 resources:
+  volumes:
+    aeso_raw:                       # landing zone: the ingest notebooks write raw AESO files here, the pipeline reads them
+      catalog_name: ${var.catalog}
+      schema_name: ${var.schema}
+      name: raw
+      comment: Raw AESO API and report files as landed by the hourly job, one folder per feed. Ingested by the aeso-transform pipeline with Auto Loader.
+
   pipelines:
     aeso_transform:
       name: aeso-transform
@@ -11,9 +18,12 @@ resources:
       configuration:
         aeso.catalog: ${var.catalog}
         aeso.schema: ${var.schema}
+        aeso.landing: /Volumes/${var.catalog}/${var.schema}/raw
       libraries:
         - file:
-            path: ../src/pipeline/transformations.py
+            path: ../src/pipeline/ingest.py           # raw landing files -> bronze streaming tables -> conformed silver
+        - file:
+            path: ../src/pipeline/transformations.py  # conformed silver -> modelling silver -> gold
 
   experiments:
     aeso_forecast:
