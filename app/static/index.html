@@ -1,0 +1,324 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AESO Market Pulse</title>
+<script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+<style>
+  :root { --bg:#05070d; --card:#0a0f1c; --line:#1c2740; --text:#e8edf7; --muted:#7d8aa5;
+          --green:#00d26a; --amber:#ffb000; --red:#ff3b30; --blue:#3d8bfd; --mono:"IBM Plex Mono",Menlo,Consolas,monospace; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font:13px/1.4 -apple-system,Segoe UI,sans-serif; }
+  header { display:flex; align-items:center; gap:14px; padding:10px 18px; border-bottom:1px solid var(--line); }
+  header h1 { font:600 15px var(--mono); letter-spacing:.08em; margin:0; }
+  .live { display:flex; align-items:center; gap:6px; color:var(--green); font:600 11px var(--mono); }
+  .dot { width:8px; height:8px; border-radius:50%; background:var(--green); animation:pulse 1.6s infinite; }
+  @keyframes pulse { 0%{box-shadow:0 0 0 0 rgba(0,210,106,.7)} 70%{box-shadow:0 0 0 8px rgba(0,210,106,0)} 100%{box-shadow:0 0 0 0 rgba(0,210,106,0)} }
+  .updated { margin-left:auto; color:var(--muted); font:11px var(--mono); }
+  main { display:grid; grid-template-columns:1fr 1fr; gap:10px; padding:10px; }
+  @media (max-width:900px) { main { grid-template-columns:1fr; } }
+  .card { background:var(--card); border:1px solid var(--line); padding:10px 12px; min-height:250px; display:flex; flex-direction:column; }
+  .card.wide { grid-column:1 / -1; }
+  .card h2 { display:flex; justify-content:space-between; align-items:center; margin:0 0 6px; font:600 11px var(--mono);
+             letter-spacing:.1em; text-transform:uppercase; color:var(--muted); }
+  .genie { font:600 10px var(--mono); color:var(--blue); text-decoration:none; border:1px solid var(--line); padding:2px 6px; }
+  .genie:hover { border-color:var(--blue); }
+  .chart { flex:1; min-height:200px; }
+  .big { font:600 64px var(--mono); line-height:1; }
+  .num { font-family:var(--mono); }
+  .muted { color:var(--muted); }
+  .row { display:flex; gap:24px; align-items:center; }
+  .err { color:var(--red); font:11px var(--mono); }
+  table { width:100%; border-collapse:collapse; font-family:var(--mono); }
+  th, td { text-align:right; padding:6px 4px; border-bottom:1px solid var(--line); }
+  th:first-child, td:first-child { text-align:left; }
+  th { color:var(--muted); font-weight:500; font-size:11px; }
+  #c10 th, #c10 td { text-align:left; }
+  form { display:grid; grid-template-columns:repeat(6, auto); gap:6px; align-items:end; margin-bottom:8px; }
+  label { display:flex; flex-direction:column; gap:2px; font:10px var(--mono); color:var(--muted); }
+  input, select, button { background:var(--bg); color:var(--text); border:1px solid var(--line); padding:5px; font:12px var(--mono); }
+  button { border-color:var(--blue); color:var(--blue); cursor:pointer; }
+  .tag { font:600 10px var(--mono); padding:1px 5px; border:1px solid currentColor; }
+  #outchip { margin-left:auto; }
+  .score { margin-left:8px; display:flex; align-items:center; gap:6px; background:none; border:1px solid var(--line); color:var(--muted);
+           font:500 11px var(--mono); padding:3px 8px; cursor:pointer; }
+  .score:hover, .score[aria-expanded="true"] { border-color:var(--muted); color:var(--text); }
+  .score b { color:var(--text); font-weight:600; }
+  .sdot { width:7px; height:7px; border-radius:50%; }
+  .updated { margin-left:12px; }
+  #c0 { display:none; position:absolute; top:44px; right:18px; width:420px; z-index:10; background:var(--card); border:1px solid var(--line);
+        padding:12px 14px; box-shadow:0 8px 24px rgba(0,0,0,.5); font-size:12px; }
+  #c0.open { display:block; }
+  #c0 h2 { display:flex; justify-content:space-between; margin:0 0 8px; font:600 10px var(--mono); letter-spacing:.1em; text-transform:uppercase; color:var(--muted); }
+  #c0 table td { padding:4px 2px; font-size:11px; }
+  header { position:relative; }
+  .section { grid-column:1 / -1; margin:8px 2px -2px; font:11px var(--mono); color:var(--muted); letter-spacing:.06em; }
+  .section b { color:var(--text); text-transform:uppercase; letter-spacing:.12em; margin-right:6px; }
+  .chip { display:flex; align-items:center; gap:6px; border:1px solid var(--line); color:var(--muted); font:500 11px var(--mono); padding:3px 8px; }
+  .chip b { color:var(--text); font-weight:600; }
+  header > * { white-space:nowrap; flex-shrink:0; }
+  header > #c0 { white-space:normal; }
+  header > .muted { flex-shrink:1; min-width:0; overflow:hidden; text-overflow:ellipsis; }
+</style>
+</head>
+<body>
+<header>
+  <h1>AESO MARKET PULSE</h1>
+  <span class="live"><span class="dot"></span>LIVE</span>
+  <span class="muted num">Alberta pool price · CAD/MWh · Mountain Time · hour-ending</span>
+  <span class="chip" id="outchip" title="Dispatchable generation (gas, hydro, storage, other) AESO expects out on outage today">OUT TODAY --</span>
+  <button class="score" id="score" aria-expanded="false" title="How accurate is the forecast? Click for details">FORECAST SCORE --</button>
+  <span class="updated" id="updated">Updated --</span>
+  <div id="c0" role="dialog"><h2>Forecast score (backtest) <a class="genie" target="_blank">ASK GENIE ↗</a></h2><div class="body"></div></div>
+</header>
+<main>
+  <div class="section"><b>Now</b> what the market is doing</div>
+  <section class="card" id="c1"><h2>Pool price right now <a class="genie" target="_blank">ANALYZE WITH GENIE ↗</a></h2><div class="body"></div></section>
+  <section class="card" id="c5"><h2>Price direction (next 6 hours) <a class="genie" target="_blank">ANALYZE WITH GENIE ↗</a></h2><div class="body"></div></section>
+  <div class="section"><b>Plan the next 24 hours</b> which hours to avoid, and how likely a spike is</div>
+  <section class="card wide" id="c7"><h2>24-hour price forecast <a class="genie" target="_blank">ANALYZE WITH GENIE ↗</a></h2><div class="chart"></div></section>
+  <section class="card" id="c6"><h2>24-hour market regime forecast <a class="genie" target="_blank">ANALYZE WITH GENIE ↗</a></h2><div class="chart"></div></section>
+  <section class="card" id="c2"><h2>48-hour price curve <a class="genie" target="_blank">ANALYZE WITH GENIE ↗</a></h2><div class="chart"></div></section>
+  <div class="section"><b>Act</b> log a spike alert or a load shift against the forecast</div>
+  <section class="card wide" id="c10"><h2>Ops actions: spike alerts and load shifts (Lakebase) <a class="genie" target="_blank">ANALYZE WITH GENIE ↗</a></h2>
+    <form id="opsForm">
+      <label>Type<select name="action_type"><option value="spike_alert">Spike alert</option><option value="load_shift">Load shift</option></select></label>
+      <label>From (MPT)<select name="window_start"></select></label>
+      <label>To (MPT)<select name="window_end"></select></label>
+      <label>MW (load shift)<input name="mw" type="number" min="0" step="1" value="10"></label>
+      <label>Alert if P(spike) ≥<input name="threshold" type="number" min="0" max="1" step="0.05" value="0.3"></label>
+      <button type="submit">LOG ACTION</button>
+    </form>
+    <div class="body"></div>
+  </section>
+  <div class="section"><b>Why</b> the supply side behind the price</div>
+  <section class="card wide" id="c11"><h2>Generation outage outlook (AESO daily + monthly reports) <a class="genie" target="_blank">ANALYZE WITH GENIE ↗</a></h2><div class="chart"></div><div class="body"></div></section>
+  <section class="card" id="c3"><h2>Wind + solar generation vs price (7 days) <a class="genie" target="_blank">ANALYZE WITH GENIE ↗</a></h2><div class="chart"></div></section>
+  <section class="card" id="c4"><h2>Peak hour heatmap (90 days) <a class="genie" target="_blank">ANALYZE WITH GENIE ↗</a></h2><div class="chart"></div></section>
+  <div class="section"><b>Check the model</b> how it did on past days</div>
+  <section class="card" id="c8"><h2>Backtest: actual vs predicted <a class="genie" target="_blank">ANALYZE WITH GENIE ↗</a></h2><div class="chart"></div></section>
+  <section class="card" id="c9"><h2>Model accuracy leaderboard <a class="genie" target="_blank">ANALYZE WITH GENIE ↗</a></h2><div class="body"></div></section>
+</main>
+<script>
+const C = { green:"#00d26a", amber:"#ffb000", red:"#ff3b30", blue:"#3d8bfd", muted:"#7d8aa5", text:"#e8edf7", line:"#1c2740" };
+const REGIME_COLOR = { Low:C.green, Normal:C.blue, Spike:C.red };
+const priceColor = v => v == null ? C.muted : v < 50 ? C.green : v <= 150 ? C.amber : C.red;
+const money = v => v == null ? "--" : "$" + Number(v).toFixed(2);
+
+// MPT timestamps are timezone-naive strings ("YYYY-MM-DD HH:MM"). Never pass them to new Date():
+// JS would read them as UTC and shift the display 6 to 7 hours. Split them with a regex instead.
+const parseTs = s => { const m = /^(\d{4}-\d{2}-\d{2})[ T](\d{2}):(\d{2})/.exec(s || ""); return m ? { date:m[1], hh:m[2], hhmm:`${m[2]}:${m[3]}` } : { date:"", hh:"", hhmm:"" }; };
+const label = s => { const t = parseTs(s); return `${t.date.slice(5)} ${t.hhmm}`; };
+
+const layout = extra => Object.assign({ paper_bgcolor:"rgba(0,0,0,0)", plot_bgcolor:"rgba(0,0,0,0)",
+  font:{ color:C.text, family:"IBM Plex Mono, Menlo, monospace", size:10 }, margin:{ l:44, r:44, t:8, b:34 },
+  xaxis:{ gridcolor:C.line, type:"category", nticks:8 }, yaxis:{ gridcolor:C.line, title:"CAD/MWh" },
+  legend:{ orientation:"h", y:-0.22 }, showlegend:true }, extra || {});
+const plot = (id, traces, extra) => Plotly.react(document.querySelector(`#${id} .chart`), traces, layout(extra), { displayModeBar:false, responsive:true });
+const body = id => document.querySelector(`#${id} .body`);
+
+let GENIE = null;
+function genieLink(id, prompt) {
+  if (!GENIE) return;
+  const q = `${prompt} Tables are in ${GENIE.fq}. Prices are CAD/MWh, times are Mountain Time, AESO hour-ending.`;
+  document.querySelector(`#${id} .genie`).href = `${GENIE.host}/one/chat?o=${GENIE.workspace_id}&q=${encodeURIComponent(q)}`;
+}
+
+const pop = () => document.getElementById("c0");
+document.addEventListener("click", e => {
+  const badge = document.getElementById("score");
+  if (badge.contains(e.target)) { const open = pop().classList.toggle("open"); badge.setAttribute("aria-expanded", open); }
+  else if (!pop().contains(e.target)) { pop().classList.remove("open"); badge.setAttribute("aria-expanded", "false"); }
+});
+document.addEventListener("keydown", e => { if (e.key === "Escape") { pop().classList.remove("open"); document.getElementById("score").setAttribute("aria-expanded", "false"); } });
+
+function render({ data, errors, genie }) {
+  GENIE = genie;
+  const prices = data.prices, fc = data.forecast, last = prices[prices.length - 1];
+
+  // 0. Accuracy score for non-specialists. Score = capture rate: of every $100 a perfect forecast would have saved
+  // by moving pumping out of the expensive hours, how many dollars this forecast saved. Day-ahead information only.
+  const acc = data.accuracy || [], champ = acc[0]?.champion;
+  const avg = name => acc.find(r => r.window_label === "mean of windows" && r.model_name === name);
+  const ours = avg(champ), aeso = avg("aeso_forecast"), naive = avg("naive_yesterday");
+  const badge = document.getElementById("score");
+  if (ours) {
+    const score = Math.round(ours.capture_pct), color = score >= 85 ? C.green : score >= 70 ? C.amber : C.red;
+    const vsAeso = aeso ? Math.round(100 * ours.capture_pct / aeso.capture_pct) : null;
+    badge.innerHTML = `<span class="sdot" style="background:${color}"></span>FORECAST SCORE <b>${score}</b>/100${vsAeso ? ` · ${vsAeso}% of AESO` : ""} ⓘ`;
+    const bar = (name, r, c) => r ? `<tr><td style="text-align:left">${name}</td>
+        <td style="width:40%"><div style="background:${c};height:4px;width:${Math.max(0, Math.min(100, r.capture_pct))}%"></div></td>
+        <td>${Math.round(r.capture_pct)}</td><td class="muted">${money(r.mae)}</td></tr>` : "";
+    const windows = acc.filter(r => r.model_name === champ && r.window_label !== "mean of windows")
+                       .map(r => `${r.window_label.slice(5, 10)}: ${Math.round(r.capture_pct)}`).join(" · ");
+    body("c0").innerHTML = `<p style="margin:0 0 8px">Over <b>${ours.n_days} past days</b>, scheduling pumping from this forecast saved
+      <b>$${score} of every $100</b> a perfect forecast would have.${vsAeso ? ` That is ${vsAeso}% as good as AESO's forecast, which is only published hours ahead.` : ""}</p>
+      <table><tr><th>Forecast</th><th></th><th>Score</th><th>Typical miss</th></tr>
+      ${bar(`Ours (${champ}, day ahead)`, ours, C.green)}${bar("AESO (hours ahead)", aeso, C.blue)}${bar("Same hour yesterday", naive, C.muted)}</table>
+      <p class="muted" style="margin:8px 0 0">By 14-day window (start date): ${windows}. Uses only what was known the day before.</p>`;
+    genieLink("c0", `Our forecast scores ${score}/100 on load-shift capture over ${ours.n_days} backtest days, against ${aeso ? Math.round(aeso.capture_pct) : "--"} for AESO's forecast. Explain in plain terms what this score means, which days it did worst on, and why. Use aeso_backtest_windows and aeso_backtest_detail.`);
+  } else {
+    badge.textContent = "FORECAST SCORE --";
+    body("c0").innerHTML = `<p class="muted">No re-baseline yet: run the aeso-rebaseline job.</p>`;
+  }
+
+  // 1. Pool price right now
+  if (last) {
+    const delta = last.rolling_30day_avg ? 100 * (last.pool_price - last.rolling_30day_avg) / last.rolling_30day_avg : null;
+    const t = parseTs(last.ts);
+    body("c1").innerHTML = `<div class="row"><div><div class="big" style="color:${priceColor(last.pool_price)}">${money(last.pool_price)}</div>
+      <div class="muted num">HE${String(Number(t.hh) + 1).padStart(2, "0")} · hour starting ${t.hhmm} MPT ${t.date}</div>
+      <div class="num" style="color:${delta > 0 ? C.red : C.green}">${delta == null ? "" : (delta > 0 ? "▲ +" : "▼ ") + delta.toFixed(1) + "% vs 30-day avg " + money(last.rolling_30day_avg)}</div></div>
+      <div id="spark" style="flex:1;height:110px"></div></div>`;
+    const s = prices.slice(-12);
+    Plotly.react("spark", [{ x:s.map(r => label(r.ts)), y:s.map(r => r.pool_price), mode:"lines", line:{ color:priceColor(last.pool_price), width:2 } }],
+      layout({ margin:{ l:0, r:0, t:0, b:0 }, showlegend:false, xaxis:{ visible:false, type:"category" }, yaxis:{ visible:false } }), { displayModeBar:false });
+    genieLink("c1", `Alberta pool price is ${money(last.pool_price)}/MWh for the hour starting ${t.hhmm} MPT on ${t.date}, ${delta == null ? "" : delta.toFixed(1) + "% vs"} the 30-day average. Why is it at this level, and how does it compare with the same hour over the last 7 days?`);
+  }
+
+  // 2. 48-hour curve
+  plot("c2", [{ x:prices.map(r => label(r.ts)), y:prices.map(r => r.pool_price), name:"Pool price", mode:"lines", line:{ color:C.amber, width:2 } },
+              { x:prices.map(r => label(r.ts)), y:prices.map(r => r.rolling_30day_avg), name:"30-day avg", mode:"lines", line:{ color:C.muted, dash:"dot" } }]);
+  const peak48 = prices.reduce((a, r) => (r.pool_price > (a?.pool_price ?? -1) ? r : a), null);
+  if (peak48) genieLink("c2", `Summarize the last 48 hours of Alberta pool price ending ${last.ts} MPT: the peak was ${money(peak48.pool_price)} at ${peak48.ts}. Which hours were above $150/MWh and why?`);
+
+  // 3. Wind vs price
+  const wind = data.wind;
+  plot("c3", [{ x:wind.map(r => label(r.ts)), y:wind.map(r => r.pool_price), name:"Pool price", mode:"lines", line:{ color:C.amber, width:1.5 } },
+              { x:wind.map(r => label(r.ts)), y:wind.map(r => r.actual_mw ?? r.most_likely_mw), name:"Wind + solar MW", yaxis:"y2", mode:"lines", line:{ color:C.blue, width:1.5 } }],
+       { yaxis2:{ overlaying:"y", side:"right", title:"MW", gridcolor:"rgba(0,0,0,0)" } });
+  const mws = wind.map(r => r.actual_mw).filter(v => v != null).sort((a, b) => a - b);
+  genieLink("c3", `Over the last 7 days, how much lower was Alberta pool price when wind + solar generation was above ${Math.round(mws[Math.floor(mws.length / 2)] || 0)} MW (the median) than when it was below?`);
+
+  // 4. Heatmap (DAYOFWEEK: 1 = Sunday)
+  const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"], z = days.map(() => Array(24).fill(null));
+  data.heatmap.forEach(r => { z[r.dow - 1][r.hour] = r.avg_price; });
+  plot("c4", [{ z, x:[...Array(24).keys()].map(h => `HE${String(h + 1).padStart(2, "0")}`), y:days, type:"heatmap",
+                colorscale:[[0, C.green], [0.35, C.amber], [1, C.red]], colorbar:{ title:"$/MWh", thickness:8 } }],
+       { showlegend:false, yaxis:{ type:"category", autorange:"reversed" } });
+  genieLink("c4", "Which hours of the week had the highest average Alberta pool price over the last 90 days, and how much more did they cost than the cheapest hours?");
+
+  // 5. Direction
+  if (fc.length && last) {
+    const next6 = fc.slice(0, 6).reduce((s, r) => s + r.ensemble_forecast_price, 0) / Math.min(6, fc.length);
+    const change = (next6 - last.pool_price) / Math.max(last.pool_price, 1);
+    const [arrow, word, col] = change > 0.05 ? ["▲", "RISING", C.red] : change < -0.05 ? ["▼", "FALLING", C.green] : ["▶", "STABLE", C.blue];
+    body("c5").innerHTML = `<div class="row" style="justify-content:space-around;margin-top:30px">
+      <div><div class="muted num">NOW</div><div class="big" style="font-size:44px;color:${priceColor(last.pool_price)}">${money(last.pool_price)}</div></div>
+      <div style="text-align:center;color:${col}"><div class="big" style="font-size:52px">${arrow}</div><div class="num">${word}</div></div>
+      <div><div class="muted num">NEXT 6H AVG</div><div class="big" style="font-size:44px;color:${priceColor(next6)}">${money(next6)}</div></div></div>`;
+    genieLink("c5", `The ensemble forecasts Alberta pool price ${word.toLowerCase()} from ${money(last.pool_price)} now to an average of ${money(next6)}/MWh over the next 6 hours. What drives this, and how accurate has the ensemble been in the latest backtest?`);
+  }
+
+  // 6. Regime timeline
+  if (fc.length) {
+    const counts = { Low:0, Normal:0, Spike:0 }; fc.forEach(r => counts[r.forecast_regime]++);
+    plot("c6", ["Low", "Normal", "Spike"].map(reg => ({ type:"bar", name:`${reg} (${counts[reg]}h)`, x:fc.map(r => label(r.ts)),
+      y:fc.map(r => r.forecast_regime === reg ? 1 : 0), marker:{ color:REGIME_COLOR[reg] },
+      customdata:fc.map(r => (100 * r.p_spike).toFixed(0)), hovertemplate:"%{x}<br>P(spike) %{customdata}%<extra></extra>" })),
+      { barmode:"stack", bargap:0.05, yaxis:{ visible:false } });
+    const spikeHours = fc.filter(r => r.forecast_regime === "Spike").map(r => parseTs(r.ts).hhmm);
+    const maxP = fc.reduce((a, r) => (r.p_spike > a.p_spike ? r : a), fc[0]);
+    genieLink("c6", `The 24h regime forecast from the ${fc[0].hmm_current_regime} regime has ${counts.Spike} Spike hours${spikeHours.length ? " (" + spikeHours.join(", ") + ")" : ""}; P(spike) peaks at ${(100 * maxP.p_spike).toFixed(0)}% at ${maxP.ts} MPT. On past days with a similar spike risk, what did pool price settle at?`);
+  }
+
+  // 7. 24-hour forecast
+  if (fc.length) {
+    const x = fc.map(r => label(r.ts)), shapes = fc.map((r, i) => ({ type:"rect", xref:"x", yref:"paper", x0:i - 0.5, x1:i + 0.5, y0:0, y1:1,
+      fillcolor:REGIME_COLOR[r.forecast_regime], opacity:0.07, line:{ width:0 } }));
+    plot("c7", [
+      { x, y:fc.map(r => r.mc_p90_price), mode:"lines", line:{ width:0 }, showlegend:false, hoverinfo:"skip" },
+      { x, y:fc.map(r => r.mc_p10_price), name:"Monte Carlo P10-P90", mode:"lines", fill:"tonexty", fillcolor:"rgba(255,176,0,0.15)", line:{ width:0 } },
+      { x, y:fc.map(r => r.prophet_forecast_price), name:"Prophet", mode:"lines", line:{ color:C.muted, dash:"dot" } },
+      { x, y:fc.map(r => r.ensemble_forecast_price), name:"Ensemble", mode:"lines+markers", line:{ color:C.text, width:3 } }],
+      { shapes, xaxis:{ gridcolor:C.line, type:"category", categoryarray:x }, legend:{ orientation:"h", y:-0.42 }, margin:{ l:44, r:20, t:8, b:70 } });
+    const pk = fc.reduce((a, r) => (r.ensemble_forecast_price > a.ensemble_forecast_price ? r : a), fc[0]);
+    genieLink("c7", `The 24h ensemble forecast peaks at ${money(pk.ensemble_forecast_price)}/MWh at ${pk.ts} MPT (Monte Carlo P90 ${money(pk.mc_p90_price)}). Which hours should flexible pumping avoid, and which are cheapest?`);
+    fillWindows(fc);
+  }
+
+  // 8. Backtest
+  const bt = data.backtest;
+  if (bt.length) {
+    const x = bt.map(r => `HE${String(r.hour_ending).padStart(2, "0")}`);
+    plot("c8", [["actual", "Actual", C.text, 3], ["ensemble", "Ensemble", C.amber, 2], ["prophet_regime", "Regime Prophet", C.blue, 1.5],
+                ["mc_seasonal", "Seasonal MC", C.green, 1.5], ["aeso_forecast", "AESO forecast", C.muted, 1]]
+      .map(([k, name, color, width]) => ({ x, y:bt.map(r => r[k]), name, mode:"lines", line:{ color, width, dash:k === "aeso_forecast" ? "dot" : "solid" } })));
+    genieLink("c8", `On backtest day ${bt[0].cutoff_date}, which model missed the settled Alberta pool price most, and in which hours?`);
+  }
+
+  // 9. Leaderboard
+  body("c9").innerHTML = `<table><tr><th>#</th><th>Model</th><th>MAE</th><th>RMSE</th><th>MAPE</th></tr>${data.leaderboard.map((r, i) =>
+    `<tr><td>${i + 1}</td><td style="text-align:left">${r.model_name} <span class="tag" style="color:${r.model_type === "baseline" ? C.muted : C.green}">${r.model_type}</span></td>
+     <td>${money(r.mae_cad_mwh)}</td><td>${money(r.rmse_cad_mwh)}</td><td>${r.mape_pct ?? "--"}%</td></tr>`).join("")}</table>
+    <p class="muted">Latest ${data.leaderboard[0]?.n_days ?? ""}-day walk-forward backtest, lowest MAE first. AESO's forecast is published only hours ahead.</p>`;
+  genieLink("c9", "Compare model accuracy (MAE, RMSE, MAPE) in the latest backtest, and explain why AESO's own forecast scores best and how the ensemble compares with same-hour-yesterday.");
+
+  // 11. Outage outlook: MW expected out by fuel. Less dispatchable capacity = thinner supply cushion = spike risk.
+  const outs = data.outages || [], daily = outs.filter(r => r.report === "daily"), monthly = outs.filter(r => r.report === "monthly");
+  if (daily.length) {
+    const d = daily.map(r => r.period.slice(5));
+    plot("c11", [{ x:d, y:daily.map(r => r.gas), name:"Gas out", type:"bar", marker:{ color:C.amber } },
+                 { x:d, y:daily.map(r => r.hydro), name:"Hydro out", type:"bar", marker:{ color:C.blue } },
+                 { x:d, y:daily.map(r => r.other), name:"Storage + other out", type:"bar", marker:{ color:C.muted } }],
+         { barmode:"stack", yaxis:{ gridcolor:C.line, title:"MW out" } });
+    const today = daily[0];
+    document.getElementById("outchip").innerHTML = `<span class="sdot" style="background:${today.dispatchable > 2500 ? C.amber : C.muted}"></span>OUT TODAY <b>${today.dispatchable.toLocaleString()}</b> MW`;
+    const peak = daily.reduce((a, r) => (r.dispatchable > a.dispatchable ? r : a)), avg = daily.reduce((s, r) => s + r.dispatchable, 0) / daily.length;
+    const mPeak = monthly.length ? monthly.reduce((a, r) => (r.dispatchable > a.dispatchable ? r : a)) : null;
+    body("c11").innerHTML = `<p class="num" style="margin:4px 0">Next 30 days: <b>${Math.round(avg).toLocaleString()} MW</b> of gas, hydro and storage out on average; most on <b>${peak.period}</b> (${peak.dispatchable.toLocaleString()} MW).
+      ${mPeak ? `Next 12 months: heaviest month <b>${mPeak.period.slice(0, 7)}</b> (${mPeak.dispatchable.toLocaleString()} MW average).` : ""}</p>
+      <p class="muted" style="margin:0">${monthly.map(r => `${r.period.slice(0, 7)}: ${r.dispatchable.toLocaleString()}`).join(" · ")} MW (monthly average out). Snapshot ${daily[0].snapshot_at} UTC; wind/solar outages excluded.</p>`;
+    genieLink("c11", `AESO's outage outlook shows ${Math.round(avg)} MW of dispatchable generation out on average over the next 30 days, peaking at ${peak.dispatchable} MW on ${peak.period}. Which fuels drive it, and how did pool price and the supply cushion behave on past days with similar outages? Use aeso_outage_outlook and gold_price_features_hourly.`);
+  } else {
+    body("c11").innerHTML = `<p class="muted">No outage outlook yet: the hourly job's ingest_outage_outlook task loads it.</p>`;
+  }
+
+  // 10. Ops actions
+  const acts = data.actions;
+  body("c10").innerHTML = acts.length ? `<table><tr><th>ID</th><th>Type</th><th>Window (MPT)</th><th>MW</th><th>Alert at</th><th>Status</th><th>By</th></tr>${acts.map(a => {
+      const inWin = fc.filter(r => r.ts >= a.window_start && r.ts <= a.window_end);   // string compare on "YYYY-MM-DD HH:MM"
+      const maxP = inWin.reduce((m, r) => Math.max(m, r.p_spike), 0);
+      const avgP = inWin.length ? inWin.reduce((s, r) => s + r.ensemble_forecast_price, 0) / inWin.length : null;
+      const status = a.action_type === "spike_alert" ? (inWin.length ? (maxP >= a.threshold ? `<span style="color:${C.red}">FIRED ${(100 * maxP).toFixed(0)}%</span>` : `armed ${(100 * maxP).toFixed(0)}%`) : "outside forecast")
+                                                     : (avgP == null ? "outside forecast" : `fcst avg ${money(avgP)}`);
+      return `<tr><td>${a.action_id}</td><td style="text-align:left">${a.action_type}</td><td>${label(a.window_start)} → ${parseTs(a.window_end).hhmm}</td>
+              <td>${a.mw ?? "--"}</td><td>${a.threshold ?? "--"}</td><td>${status}</td><td>${a.created_by ?? ""}</td></tr>`; }).join("")}</table>`
+    : `<p class="muted">No actions yet. Log a spike alert or a load shift against the forecast window above.</p>`;
+  const shift = acts.find(a => a.action_type === "load_shift");
+  genieLink("c10", shift ? `What would shifting ${shift.mw} MW of pumping out of ${shift.window_start} to ${shift.window_end} MPT have saved versus the settled pool price? Use ops_actions_history and aeso_pool_price.`
+                         : "Which logged ops actions (spike alerts and load shifts) fired or applied this week, and what were pool prices in those windows? Use ops_actions_history.");
+
+  const runTs = fc[0]?.run_ts;
+  document.getElementById("updated").textContent = `Updated ${last ? label(last.ts) : "--"} MPT · model run ${runTs ? label(runTs) : "--"} UTC`;
+  Object.entries(errors || {}).forEach(([k, msg]) => console.warn(`card data '${k}' failed:`, msg));
+}
+
+function fillWindows(fc) {
+  ["window_start", "window_end"].forEach((name, j) => {
+    const sel = document.querySelector(`#opsForm [name=${name}]`), keep = sel.value;
+    sel.innerHTML = fc.map(r => `<option value="${r.ts}">${label(r.ts)}</option>`).join("");
+    sel.value = keep && fc.some(r => r.ts === keep) ? keep : fc[Math.min(j ? 5 : 1, fc.length - 1)].ts;
+  });
+}
+
+document.getElementById("opsForm").addEventListener("submit", async e => {
+  e.preventDefault();
+  const f = Object.fromEntries(new FormData(e.target));
+  const payload = { action_type:f.action_type, window_start:f.window_start, window_end:f.window_end,
+    mw:f.action_type === "load_shift" ? Number(f.mw) : null, threshold:f.action_type === "spike_alert" ? Number(f.threshold) : null };
+  const r = await fetch("api/ops_actions", { method:"POST", headers:{ "Content-Type":"application/json" }, body:JSON.stringify(payload) });
+  if (!r.ok) alert(`Could not log action: ${await r.text()}`);
+  refresh();
+});
+
+async function refresh() {
+  try { render(await (await fetch("api/dashboard")).json()); }
+  catch (err) { document.getElementById("updated").innerHTML = `<span class="err">Refresh failed: ${err}</span>`; }
+}
+refresh();
+setInterval(refresh, 5 * 60 * 1000);   // auto-refresh every 5 minutes
+</script>
+</body>
+</html>

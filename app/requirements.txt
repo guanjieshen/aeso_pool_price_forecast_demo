@@ -1,0 +1,5 @@
+fastapi>=0.115
+uvicorn[standard]>=0.32
+databricks-sdk>=0.60
+databricks-sql-connector>=4
+psycopg[binary]>=3.2
