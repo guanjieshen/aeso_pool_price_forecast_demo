@@ -24,9 +24,11 @@ dbutils.widgets.text("tune_days", "7")
 dbutils.widgets.text("eval_days", "14")
 dbutils.widgets.text("mae_guard", "1.05")   # a candidate's MAE may be at most 5% worse than the champion's
 dbutils.widgets.text("experiment", "")
+dbutils.widgets.text("candidate", "")      # submit this grid recipe as the challenger (skip the tuning pick)
 CATALOG, SCHEMA = dbutils.widgets.get("catalog"), dbutils.widgets.get("schema")
 TUNE_DAYS, EVAL_DAYS = int(dbutils.widgets.get("tune_days")), int(dbutils.widgets.get("eval_days"))
 MAE_GUARD = float(dbutils.widgets.get("mae_guard"))
+CANDIDATE = dbutils.widgets.get("candidate").strip()
 FQ = f"{CATALOG}.{SCHEMA}"
 MODEL_NAME = f"{FQ}.pool_price_ensemble"
 spark.conf.set("spark.sql.session.timeZone", "UTC")
@@ -49,10 +51,13 @@ champion_version, champion_cfg = em.config_for(MODEL_NAME, "champion")
 print(f"Champion v{champion_version}: {json.dumps(champion_cfg, sort_keys=True)}")
 print(f"Tuning window: {tune_cutoffs[0].date()} .. {tune_cutoffs[-1].date()} ({len(tune_cutoffs)} days)")
 
-# The grid moves the two settings that matter most for decisions: how tightly the regime-aware Prophet
-# follows trend changes, and how far the blend may lean on it (it ranks expensive hours best).
+# The grid moves what matters most for decisions: how tightly the regime-aware Prophet follows trend changes and
+# how far the blend may lean on it, plus the fundamentals gate (research: the supply cushion is the strongest
+# public driver of spikes, so below a cushion threshold the forecast blends towards the fundamentals model).
 GRID = {f"cps{cps}_w{lo}-{hi}": {**champion_cfg, "regime_cps": cps, "weight_low": lo, "weight_high": hi}
         for cps in (0.0005, 0.001, 0.005) for lo, hi in ((0.3, 0.7), (0.5, 0.9), (0.7, 1.0))}
+GRID.update({f"cushion_gate_{lo}-{hi}": {**champion_cfg, "fundamentals_gate": [lo, hi]}
+             for lo, hi in ((1000, 2500), (1500, 3000))})
 candidates = {"champion": champion_cfg, **GRID}
 detail = fl.walk_forward(history, by_ds, tune_cutoffs, candidates)
 board = fl.leaderboard(detail, {f"ensemble__{n}": "model" for n in candidates})
@@ -65,7 +70,11 @@ print("Tuning results (ensemble per candidate):\n" + board[["candidate", "captur
 champ = board.set_index("candidate").loc["champion"]
 eligible = board[(board.candidate != "champion") & (board.mae_cad_mwh <= champ.mae_cad_mwh * MAE_GUARD)]
 best = eligible.sort_values(["capture_rate_pct", "mae_cad_mwh"], ascending=[False, True]).head(1)
-if best.empty or best.iloc[0].capture_rate_pct <= champ.capture_rate_pct or \
+if CANDIDATE:   # a person submits an idea; the evaluation job's gate still decides
+    if CANDIDATE not in GRID:
+        raise ValueError(f"Unknown candidate {CANDIDATE!r}; choose from {sorted(GRID)}")
+    best = board[board.candidate == CANDIDATE]
+elif best.empty or best.iloc[0].capture_rate_pct <= champ.capture_rate_pct or \
         fl.resolve(candidates[best.iloc[0].candidate]) == champion_cfg:
     dbutils.notebook.exit(f"No candidate beat the champion on the tuning window "
                           f"(champion capture {champ.capture_rate_pct:.1f}%); no challenger this week.")
@@ -92,7 +101,7 @@ with mlflow.start_run(run_name=f"challenger-{run_ts:%Y%m%dT%H%M}") as run:
     mlflow.log_table(board, "tuning_leaderboard.json")
     run_id = run.info.run_id
 
-version = em.register(fitted, future[["ds", "wind_solar_mw"]], forecast[["ensemble_forecast_price"]], MODEL_NAME, run_id,
+version = em.register(fitted, future[["ds", *fl.FEATURES]], forecast[["ensemble_forecast_price"]], MODEL_NAME, run_id,
                       {"role": "challenger", "proposed_by": "aeso-weekly-retrain", "candidate": best.candidate})
 from mlflow import MlflowClient
 MlflowClient(registry_uri="databricks-uc").set_registered_model_alias(MODEL_NAME, "challenger", version)

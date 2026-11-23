@@ -9,6 +9,7 @@ Reviewers read text, not screenshots. `evidence/` holds real run output from the
 | `03_ml_backtest.md` | HMM regimes, convergence, backtest leaderboard, business value, `@champion` | same |
 | `04_lakebase_app.md` | Synced tables match Delta, write-back round trip, the deployed app's API | same |
 | `06_model_lifecycle.md` | Weekly challenger tuning, the triggered evaluation, the promotion decision, forecasts archived per champion | same |
+| `07_fundamentals.md` | Supply/demand ingest, what drives the price (explained variance, price by cushion band), day-ahead coverage, published wind forecast accuracy, the snapshot archive, the live cushion and P(price > $150) | same |
 | `05_genie_benchmark.md` | Genie score against ground truth, with Genie's SQL | `scripts/genie_benchmark.py` |
 | `raw/` (git-ignored) | Full cell output per task, regenerated locally | `scripts/export_evidence.py` |
 

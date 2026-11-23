@@ -11,7 +11,7 @@ A day-ahead, regime-aware Alberta pool price forecast that helps **Enbridge Liqu
 | Ingest | **Lakeflow Jobs** | Hourly: AESO pool price API, wind/solar CSV and metered history into bronze Delta (MERGE) |
 | Transform | **Lakeflow declarative pipeline** | Silver/gold materialized views with data-quality expectations |
 | Govern | **Unity Catalog** | Governed tags, comments, lineage, the AESO key as a UC secret, least-privilege grants |
-| Predict | **MLflow + UC model registry** | HMM + Prophet + Monte Carlo ensemble, 5-day walk-forward backtest, `@champion` model |
+| Predict | **MLflow + UC model registry** | HMM + Prophet + Monte Carlo ensemble plus a supply-cushion fundamentals model, 14-day walk-forward backtest on day-ahead features, self-improving `@champion` model |
 | Serve | **Lakebase** | Synced tables for the app's live cards, `ops_actions` write-back |
 | Surface | **Databricks Apps** | AESO Market Pulse, a terminal-style dashboard for ops and the energy desk |
 | Ask | **Genie** | A governed Genie space, plus "Analyze with Genie" links into Genie One from each card |

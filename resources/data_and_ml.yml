@@ -33,7 +33,9 @@ resources:
           default: ${var.catalog}
         - name: schema
           default: ${var.schema}
-        - name: full_refresh          # true re-pulls metered wind/solar history from 2026-01-01
+        - name: full_refresh          # true re-pulls metered wind/solar and supply/demand history from 2026-01-01
+          default: "false"
+        - name: run_backtest          # true also re-scores @champion walk-forward on the latest 14 day-ahead days
           default: "false"
       tasks:
         - task_key: ingest_pool_price
@@ -45,11 +47,17 @@ resources:
         - task_key: ingest_wind_solar_metered
           notebook_task:
             notebook_path: ../src/ingest/wind_solar_metered.py
+        - task_key: ingest_supply_demand
+          depends_on:
+            - task_key: ingest_wind_solar_forecast   # its snapshot archive includes the 7-day wind/solar forecast
+          notebook_task:
+            notebook_path: ../src/ingest/supply_demand.py
         - task_key: transform
           depends_on:
             - task_key: ingest_pool_price
             - task_key: ingest_wind_solar_forecast
             - task_key: ingest_wind_solar_metered
+            - task_key: ingest_supply_demand
           pipeline_task:
             pipeline_id: ${resources.pipelines.aeso_transform.id}
         - task_key: forecast
@@ -58,7 +66,6 @@ resources:
           notebook_task:
             notebook_path: ../src/ml/pool_price_forecast.py
             base_parameters:
-              run_backtest: "false"
               experiment: ${resources.experiments.aeso_forecast.name}
         - task_key: lakebase_sync
           depends_on:
@@ -87,6 +94,8 @@ resources:
           default: ${var.catalog}
         - name: schema
           default: ${var.schema}
+        - name: candidate             # blank = tune and pick; a grid name (e.g. cushion_gate_1000-2500) = submit it
+          default: ""
       tasks:
         - task_key: train_challenger
           notebook_task:
@@ -152,3 +161,6 @@ resources:
         - task_key: live_accuracy_and_drift
           notebook_task:
             notebook_path: ../src/ml/daily_monitor.py
+        - task_key: price_drivers          # what drives the price: explained variance per fundamental (Genie, evidence)
+          notebook_task:
+            notebook_path: ../src/ml/price_drivers.py

@@ -12,7 +12,7 @@ A day-ahead Alberta pool price forecast that helps Enbridge Liquids Pipelines pr
 | --- | --- | --- | --- |
 | **Ingest + transform** | Hourly Lakeflow Job: AESO API and CSV into bronze (MERGE), declarative pipeline to silver/gold | `src/ingest/`, `src/pipeline/`, `resources/data_and_ml.yml` | [agents/data.md](agents/data.md) |
 | **Governance** | Governed tags, comments, grants, the AESO key as a UC secret | `src/governance/` | [agents/data.md](agents/data.md) |
-| **ML** | HMM + Prophet + Monte Carlo ensemble, walk-forward backtest, MLflow, UC model, business value, and the **self-improving lifecycle** (weekly challenger, model update trigger, gated promotion, drift monitor) | `src/ml/`, `resources/data_and_ml.yml` | [agents/ml.md](agents/ml.md) |
+| **ML** | HMM + Prophet + Monte Carlo ensemble, supply-cushion fundamentals model, walk-forward backtest on day-ahead features, MLflow, UC model, business value, and the **self-improving lifecycle** (weekly challenger, model update trigger, gated promotion, drift monitor) | `src/ml/`, `resources/data_and_ml.yml` | [agents/ml.md](agents/ml.md) |
 | **Serving** | Lakebase synced tables and `ops_actions` write-back, the AESO Market Pulse app | `app/`, `src/lakebase/`, `resources/serving.yml` | [agents/app.md](agents/app.md) |
 | **AI** | Genie space, benchmark, Genie One deep links | `src/genie/`, `resources/serving.yml`, `scripts/genie_benchmark.py` | [agents/genie.md](agents/genie.md) |
 | **Evidence** | Text output of real runs, for reviewers | `evidence/`, `scripts/export_evidence.py` | [agents/evidence.md](agents/evidence.md) |
@@ -68,6 +68,10 @@ Lead with what matters. Tables for anything with more than two parts. **Bold the
 ## Gotchas learned the hard way
 
 - **The metered volume API's `endDate` is exclusive**; the pool price report's is inclusive. Getting this wrong silently drops the last day of every window (it showed up as 250 imputed hours).
+- **The AIES capability API's `endDate` is exclusive too**; the load (actual forecast) report's is inclusive.
+- **The intertie API (`itc/v1/interchange`) wants `yyyyMMdd` dates** plus `startHE`, `endHE`, `version`; ISO dates return a 500.
+- **AESO's yearly wind/solar forecast files end with a checksum line** that is not a date; skip unparseable rows. They are refreshed about monthly, so the snapshot archive covers the latest weeks.
+- **Never backtest on realised wind.** The test day must use the `*_dayahead_mw` columns; a realised-wind backtest on a quiet window showed 90% capture; on day-ahead wind (Oct 18 to 31) the same champion scored 73%.
 - **The metered volume API rejects long `asset_ID` lists** (400 at 25 IDs); 10 per call works.
 - **The wind/solar CSV holds only about 2 days of actuals**; history comes from metered volumes.
 - **`domain` and `layer` are governed tags** in this metastore with fixed value lists; an unlisted value fails the whole statement.

@@ -26,13 +26,17 @@ Each phase is one GitHub milestone, one tracking issue and one pull request into
 | **3. App + Lakebase** | Lakebase project, synced tables, `ops_actions` write-back, AESO Market Pulse app (9 cards + ops action form) | App deployed, reads Lakebase, write-back round trip verified | ✅ |
 | **4. AI + story** | Genie space (instructions, benchmark), screen-aware "Analyze with Genie" links to Genie One, evidence export, deck | Benchmark scored, evidence and deck committed | ✅ |
 | **5. Self-improving models** | Weekly challenger, model update trigger on `@challenger`, gated promotion (capture rate + MAE guard), forecast archive, daily live-accuracy and drift monitor | A challenger promoted (or rejected) by the triggered job, decision logged | ✅ |
+| **6. Fundamentals** | Supply/demand ingest (load, capability net of outages, intertie import ATC), AESO published wind/solar forecast files, as-published snapshot archive, day-ahead features for every backtest, supply-cushion fundamentals model as a gated challenger, price-drivers analysis | Champion re-scored on day-ahead features; cushion recipe judged by the gate | ✅ |
 
 ## Architecture
 
 ```
 AESO API (pool price)  ─┐
 AESO API (metered MWh) ─┼─► Lakeflow Job (hourly, serverless)
-AESO CSV (wind/solar)  ─┘     1. ingest notebooks ─► bronze Delta (MERGE)
+AESO CSV (wind/solar)  ─┤
+AESO API (load, AIES   ─┤
+  capability, interties)│  + published wind/solar forecast files; forward values archived as published each run
+AESO files (forecasts) ─┘     1. ingest notebooks ─► bronze Delta (MERGE)
                               2. declarative pipeline ─► silver / gold (expectations)
                               3. forecast notebook ─► forecast + backtest tables, MLflow, UC model
                               4. Lakebase sync ─► synced tables (+ ops_actions copied back to Delta)
@@ -53,7 +57,11 @@ AESO CSV (wind/solar)  ─┘     1. ingest notebooks ─► bronze Delta (MERGE
 | `aeso_pool_price` | bronze | `src/ingest/pool_price_incremental.py` | `begin_datetime_utc` |
 | `aeso_wind_solar_forecast` | bronze | `src/ingest/wind_solar_forecast.py` | `forecast_transaction_date` |
 | `aeso_wind_solar_metered` | bronze | `src/ingest/wind_solar_metered.py` | `begin_datetime_utc` |
+| `aeso_supply_demand_hourly` | bronze | `src/ingest/supply_demand.py` (MERGE) | `begin_datetime_utc` |
+| `aeso_wind_solar_published` | bronze | `src/ingest/supply_demand.py` (overwrite from AESO's yearly files) | `forecast_datetime_mpt` |
+| `aeso_fundamentals_snapshots` | bronze | `src/ingest/supply_demand.py` (append every run) | `snapshot_at, begin_datetime_mpt` |
 | `silver_pool_price_hourly` | silver | pipeline | `begin_datetime_utc` |
+| `silver_supply_demand_hourly` | silver | pipeline | `begin_datetime_mpt` |
 | `silver_wind_solar_hourly` | silver | pipeline | `forecast_transaction_date` |
 | `gold_price_features_hourly` | gold | pipeline | `ds` (MPT hour) |
 | `aeso_price_forecast_output` | gold | `src/ml/pool_price_forecast.py` (overwrite) | `forecast_datetime_mpt` |
@@ -62,6 +70,7 @@ AESO CSV (wind/solar)  ─┘     1. ingest notebooks ─► bronze Delta (MERGE
 | `aeso_forecast_history` | gold | forecast notebook (append, every hourly run) | `model_run_timestamp, forecast_datetime_mpt` |
 | `aeso_model_promotions` | gold | `src/ml/evaluate_challenger.py` (append) | `evaluated_at` |
 | `aeso_live_accuracy` | gold | `src/ml/daily_monitor.py` (overwrite) | `view, segment, model_name` |
+| `aeso_price_drivers` | gold | `src/ml/price_drivers.py` (overwrite, daily) | `view, segment` |
 | `aeso_business_value` | gold | `src/ml/business_value.py` | `run_timestamp, scenario` |
 | `ops_actions_history` | gold | Lakebase copy-back task | `action_id` |
 
@@ -80,3 +89,4 @@ AESO CSV (wind/solar)  ─┘     1. ingest notebooks ─► bronze Delta (MERGE
 | 2 | Latest forecast has 24 rows; backtest metrics cover 5 models + 2 baselines; UC model alias `champion` exists |
 | 3 | Synced table row counts equal Delta; an app-written `ops_actions` row is read back and appears in `ops_actions_history` |
 | 4 | Genie benchmark N/8 committed; every app card's "Analyze with Genie" link opens Genie One with the prompt filled in |
+| 6 | `aeso_fundamentals_snapshots` grows every hourly run; `gold_price_features_hourly` has day-ahead cushion for every settled hour AESO has published a forecast for; latest promotion row judged on day-ahead features |

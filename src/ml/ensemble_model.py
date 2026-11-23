@@ -1,7 +1,8 @@
 """MLflow pyfunc wrapper for the converged ensemble (UC model `pool_price_ensemble`), plus registry and data helpers
 shared by the forecast, weekly retrain and evaluation notebooks.
 
-Input: rows of `ds` (naive MPT hour) and `wind_solar_mw`, in time order starting the hour after the last
+Input: rows of `ds` (naive MPT hour) and the gold fundamentals (`wind_solar_mw`, and when the version's recipe has a
+`fundamentals_gate`: `supply_cushion_mw`, `net_load_mw`, `load_mw`), in time order starting the hour after the last
 settled price. Output: `ensemble_forecast_price` (CAD/MWh) per row.
 """
 import json
@@ -24,15 +25,26 @@ class PoolPriceEnsemble(mlflow.pyfunc.PythonModel):
         self.hmm = {k: np.array(cfg[k]) for k in ("means", "stds", "trans")}
         self.start_state = int(cfg["start_state"])
         self.factors = np.array(cfg["factors"])
+        self.bounds = (cfg.get("weight_low", fl.WEIGHT_BOUNDS[0]), cfg.get("weight_high", fl.WEIGHT_BOUNDS[1]))
+        self.gate = cfg.get("fundamentals_gate")
+        self.fundamentals = None
+        if self.gate:
+            import pickle
+            with open(context.artifacts["fundamentals"], "rb") as f:
+                self.fundamentals = pickle.load(f)
 
     def predict(self, context, model_input: pd.DataFrame) -> pd.DataFrame:
-        future = model_input[["ds", "wind_solar_mw"]].copy()
+        future = model_input.copy()
         future["ds"] = pd.to_datetime(future["ds"])
         regime = fl.predict_prophet(self.regime_prophet, future)
         states, prices = fl.monte_carlo(self.hmm, self.start_state, len(future))
         mc = np.median(fl.apply_seasonality(states, prices, future["ds"].dt.hour.to_numpy(), self.factors), axis=0)
-        weight = fl.ensemble_weights(self.hmm["trans"], self.start_state, len(future))
-        return pd.DataFrame({"ensemble_forecast_price": weight * regime + (1 - weight) * mc})
+        weight = fl.ensemble_weights(self.hmm["trans"], self.start_state, len(future), self.bounds)
+        price = weight * regime + (1 - weight) * mc
+        if self.fundamentals is not None:
+            g = fl.gate_weight(future["supply_cushion_mw"].to_numpy(), self.gate)
+            price = (1 - g) * price + g * fl.predict_fundamentals(self.fundamentals, future)
+        return pd.DataFrame({"ensemble_forecast_price": price})
 
 
 def save_artifacts(fitted: dict, directory: str) -> dict:
@@ -43,10 +55,18 @@ def save_artifacts(fitted: dict, directory: str) -> dict:
     with open(config_path, "w") as f:
         json.dump({"means": fitted["means"].tolist(), "stds": fitted["stds"].tolist(),
                    "trans": fitted["trans"].tolist(), "start_state": fitted["start_state"],
-                   "factors": fitted["factors"].tolist()}, f)
+                   "factors": fitted["factors"].tolist(), "weight_low": fitted["config"]["weight_low"],
+                   "weight_high": fitted["config"]["weight_high"],
+                   "fundamentals_gate": fitted["config"].get("fundamentals_gate")}, f)
     with open(prophet_path, "w") as f:
         f.write(model_to_json(fitted["regime_prophet"]))
-    return {"config": config_path, "regime_prophet": prophet_path}
+    artifacts = {"config": config_path, "regime_prophet": prophet_path}
+    if fitted.get("fundamentals") is not None:
+        import pickle
+        artifacts["fundamentals"] = f"{directory}/fundamentals.pkl"
+        with open(artifacts["fundamentals"], "wb") as f:
+            pickle.dump(fitted["fundamentals"], f)
+    return artifacts
 
 
 # ---------- Registry helpers (Unity Catalog) ----------
@@ -83,7 +103,7 @@ def register(fitted: dict, example: pd.DataFrame, output: pd.DataFrame, model_na
             name="pool_price_ensemble", python_model=PoolPriceEnsemble(), artifacts=save_artifacts(fitted, tmp),
             code_paths=["forecast_lib.py", "ensemble_model.py"], input_example=example.head(3),
             signature=infer_signature(example, output), registered_model_name=model_name,
-            pip_requirements=["prophet==1.5.0", "numpy", "pandas", "mlflow"])
+            pip_requirements=["prophet==1.5.0", "scikit-learn", "numpy", "pandas", "mlflow"])
     version = str(info.registered_model_version)
     client = MlflowClient(registry_uri="databricks-uc")
     for key, value in {"config": json.dumps(fitted["config"], sort_keys=True), **tags}.items():
@@ -94,16 +114,19 @@ def register(fitted: dict, example: pd.DataFrame, output: pd.DataFrame, model_na
 def load_features(spark, fq: str, horizon: int = fl.HORIZON) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     """(gold, history, future): all gold hours, settled history, and the next `horizon` unsettled hours."""
     gold = (spark.table(f"{fq}.gold_price_features_hourly")
-            .select("ds", "y", "wind_solar_mw", "forecast_pool_price").orderBy("ds").toPandas())
+            .select("ds", "y", "forecast_pool_price", *fl.FEATURES, *fl.DAYAHEAD.values()).orderBy("ds").toPandas())
     gold["ds"] = pd.to_datetime(gold["ds"])
-    gold["wind_solar_mw"] = gold["wind_solar_mw"].ffill().bfill()
+    # As-recorded features are filled across small gaps; day-ahead ones are not (a gap means "not known then").
+    gold[fl.FEATURES] = gold[fl.FEATURES].ffill().bfill()
     history = gold[gold["y"].notna()].drop_duplicates("ds").reset_index(drop=True)
     future = gold[gold["ds"] > history["ds"].max()].head(horizon).reset_index(drop=True)
     return gold, history, future
 
 
-def complete_days(history: pd.DataFrame, n: int, skip_last: int = 0) -> list:
-    """The last `n` days with at least 23 settled hours, optionally ending `skip_last` days earlier."""
-    counts = history.groupby(history.ds.dt.date).size()
+def complete_days(history: pd.DataFrame, n: int, skip_last: int = 0, dayahead: bool = True) -> list:
+    """The last `n` days with at least 23 settled hours (and, by default, a day-ahead cushion for at least 23 of
+    them, so the backtest never falls back to realised wind), optionally ending `skip_last` days earlier."""
+    ok = history["supply_cushion_dayahead_mw"].notna() if dayahead else pd.Series(True, index=history.index)
+    counts = history[ok].groupby(history.ds.dt.date).size()
     days = [pd.Timestamp(d) for d in counts[counts >= 23].index]
     return days[-(n + skip_last):len(days) - skip_last]

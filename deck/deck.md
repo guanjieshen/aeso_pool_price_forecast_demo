@@ -13,18 +13,19 @@ Built on Databricks from public AESO market data · November 2026
 | | |
 | --- | --- |
 | **Where the money is** | In 2026, **2.6% of hours** (200 hours above $150/MWh) carried **35.8%** of a flat load's Alberta pool-price cost |
-| **What a forecast can capture** | Over a 14-day walk-forward backtest the forecast's hour ranking captured **90%** of the savings perfect foresight would give |
-| **What that is worth** | Indicative 2026 to date, **per 10 MW of flexible load: about $1.04M** |
+| **What a forecast can capture** | Over a 14-day walk-forward backtest the forecast's hour ranking captured **80%** of the savings perfect foresight would give, using only what was known the day before |
+| **What that is worth** | Indicative 2026 to date, **per 10 MW of flexible load: about $0.93M** |
 | **How fast, and getting better** | Refreshed **every hour**; the model **retrains and re-qualifies itself every week** |
 
-Indicative value = perfect-foresight shifting value ($115,776 per flexible MW, 2026 to date) × backtest capture rate (90.2%). Flexible MW and 4 shiftable hours a day are planning assumptions to confirm with operations.
+Indicative value = perfect-foresight shifting value ($115,776 per flexible MW, 2026 to date) × backtest capture rate (80.3%). Flexible MW and 4 shiftable hours a day are planning assumptions to confirm with operations.
 
 ---
 
 ## The problem: power is the largest operating cost, and its price is spiky
 
-- Alberta pump stations buy at the **hourly AESO pool price**: averaging **$33.75/MWh** in 2026, but hitting the **$999.99 cap** (May 25 and 28).
-- Cost is concentrated: the most expensive **5% of hours carry 43.6%** of a flat load's cost.
+- Alberta pump stations buy at the **hourly AESO pool price**: averaging **$33.72/MWh** in 2026, but hitting the **$999.99 cap** (May 25 and 28).
+- Cost is concentrated: the most expensive **5% of hours carry 43.5%** of a flat load's cost.
+- What drives it is **spare supply**: hours with under 2,000 MW of supply cushion are **6.1% of hours but 78% of spike hours**.
 - Pumping is **partly flexible** (line-pack, tankage), but there is no forward, regime-aware view of when spikes will land, so flexibility goes unused or is used late.
 
 Aligned to the Energy outcome map: **Connected Midstream** (optimize pipeline operations) meets **Precision Trading** (price and risk intelligence).
@@ -44,15 +45,15 @@ Aligned to the Energy outcome map: **Connected Midstream** (optimize pipeline op
 
 ## For the executive sponsor: what it is worth
 
-| Flexible load | Perfect-foresight ceiling (2026 to date) | At 90.2% capture (current champion model) |
+| Flexible load | Perfect-foresight ceiling (2026 to date) | At 80.3% capture (current champion model) |
 | --- | --- | --- |
-| 5 MW | $579k | $522k |
-| **10 MW** | **$1.16M** | **$1.04M** |
-| 20 MW | $2.32M | $2.09M |
+| 5 MW | $579k | $465k |
+| **10 MW** | **$1.16M** | **$0.93M** |
+| 20 MW | $2.32M | $1.86M |
 
 - **Low cost to prove:** public data, serverless compute, one bundle deploys it.
 - **Scales** to every Alberta station group, and to other power markets on the system.
-- **Honest bounds:** the capture rate comes from a 14-day walk-forward backtest with observed wind; a pilot measures it on real load.
+- **Honest bounds:** the capture rate comes from a 14-day walk-forward backtest that sees only AESO's published day-ahead wind forecast, not the wind that blew; a pilot measures it on real load.
 
 ---
 
@@ -71,26 +72,27 @@ Every step is in the product today: alerts and shifts are written to **Lakebase*
 
 | Stage | Databricks | What it does |
 | --- | --- | --- |
-| Ingest | **Lakeflow Jobs** | Hourly AESO pool price, wind/solar forecast, and wind/solar history rebuilt from 99 metered assets |
-| Transform | **Lakeflow declarative pipeline** | Silver/gold with data-quality expectations; only 10 of 8,001 hours imputed |
+| Ingest | **Lakeflow Jobs** | Hourly AESO pool price, wind/solar forecast and history (99 metered assets), and supply fundamentals (load, capability net of outages, interties) archived as published |
+| Transform | **Lakeflow declarative pipeline** | Silver/gold with data-quality expectations; only 1 of 8,004 hours imputed |
 | Govern | **Unity Catalog** | Governed tags, lineage, the AESO key as a UC secret, least-privilege grants |
-| Predict | **MLflow + UC registry + Lakeflow Jobs** | Regime HMM + Prophet + Monte Carlo ensemble; weekly challenger, model update trigger, gated `@champion` promotion |
+| Predict | **MLflow + UC registry + Lakeflow Jobs** | Regime HMM + Prophet + Monte Carlo ensemble, plus a supply-cushion model for tight hours; weekly challenger, model update trigger, gated `@champion` promotion |
 | Serve | **Lakebase** | Low-latency live cards, ops action write-back |
 | Surface + ask | **Databricks Apps + Genie** | AESO Market Pulse; Genie space (8/8 benchmark); screen-aware links into Genie One |
 
 ---
 
-## Accuracy, honestly (14-day walk-forward backtest, 336 hours)
+## Accuracy, honestly (14-day walk-forward backtest on day-ahead information, Oct 18 to 31, 336 hours)
 
 | Forecast | MAE ($/MWh) |
 | --- | --- |
-| AESO published forecast | 3.86 · *published only hours ahead* |
-| **Our day-ahead ensemble** | **6.61** · **64% better than same-hour-yesterday** |
-| Regime-aware Prophet | 6.73 |
-| Same hour yesterday | 18.20 |
+| AESO published forecast | 16.24 · *published only hours ahead* |
+| **Our day-ahead ensemble + cushion model** | **27.37** · **54% better than same-hour-yesterday** |
+| Regime-aware Prophet | 30.36 |
+| Same hour yesterday | 59.85 |
 
-- The **regime model matters**: plain Prophet chased spikes (MAE 25.01); removing Spike hours cut it to 6.73.
-- **It improves itself:** the first weekly challenger beat the old champion on the same 14 days (capture **72.0% to 90.2%**, MAE **7.79 to 6.61**) and was promoted automatically.
+- The **regime model matters**: plain Prophet chased spikes (MAE 44.53); removing Spike hours cut it to 30.36.
+- **Fundamentals beat more curve-fitting:** a model of price on the supply cushion, used only when the cushion is thin, was submitted as a challenger and promoted on the same 14 days (capture **73.1% to 80.3%**, MAE **31.79 to 27.37**). A Prophet-only tweak was rejected the same day.
+- **No look-ahead:** we re-scored the old champion when we found the backtest was seeing the real wind; on the published wind forecast its capture is 73.1% on Oct 18 to 31, not the 90.2% it showed on a quiet window with the real wind.
 
 ---
 

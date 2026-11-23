@@ -1,17 +1,17 @@
 # Lakebase serving + AESO Market Pulse app (deployed)
 
-Exported 2026-11-23 16:06 UTC by `scripts/export_evidence.py` from the live workspace. Full cell output regenerates into the git-ignored `evidence/raw/`.
+Exported 2026-11-23 19:23 UTC by `scripts/export_evidence.py` from the live workspace. Full cell output regenerates into the git-ignored `evidence/raw/`.
 
 ## Task `lakebase_sync` (job `aeso-hourly`)
 
-Job run `1062095509219844` · task run `1100316728163800` · **SUCCESS** · 58s · full output `evidence/raw/aeso-hourly__lakebase_sync.md` (local)
+Job run `362081059053813` · task run `287031223871765` · **SUCCESS** · 58s · full output `evidence/raw/aeso-hourly__lakebase_sync.md` (local)
 
 ```text
 forecast_latest_synced: refresh COMPLETED
 pool_price_hourly_synced: refresh COMPLETED
 
 forecast_latest_synced: Lakebase rows 24 | Delta source rows 24 | match True
-pool_price_hourly_synced: Lakebase rows 7835 | Delta source rows 7835 | match True
+pool_price_hourly_synced: Lakebase rows 7839 | Delta source rows 7839 | match True
 
 Copied 3 ops actions to energy_canada_demos_catalog.aeso_price_forecast.ops_actions_history:
  action_id                 created_at action_type    window_start_mpt      window_end_mpt   mw  threshold                            note
@@ -41,10 +41,10 @@ Copied 3 ops actions to energy_canada_demos_catalog.aeso_price_forecast.ops_acti
 
 | Feed | Source | Rows | First row |
 |---|---|---|---|
-| prices | Lakebase | 48 | `{"ts": "2026-11-21 09:00", "pool_price": 22.16, "rolling_30day_avg": 36.59}` |
-| forecast | Lakebase | 24 | `{"ts": "2026-11-23 09:00", "hour_ending": 10, "prophet_forecast_price": 10.18895594225766, "mc_p10_price": 12.08823421922342, "mc_p90_price": 39.48096651192209, "ensemble_forecast_price": 13.48909378835539, "forecast_regime": "Nor` |
-| wind | SQL warehouse | 169 | `{"ts": "2026-11-16 08:00", "pool_price": 15.37, "actual_mw": 3186.7927712999995, "most_likely_mw": null}` |
+| prices | Lakebase | 48 | `{"ts": "2026-11-21 12:00", "pool_price": 23.91, "rolling_30day_avg": 36.47}` |
+| forecast | Lakebase | 24 | `{"ts": "2026-11-23 12:00", "hour_ending": 13, "prophet_forecast_price": 13.13774655408935, "mc_p10_price": 12.066141841407381, "mc_p90_price": 39.45181111283805, "ensemble_forecast_price": 14.598743876669143, "forecast_regime": "N` |
+| wind | SQL warehouse | 169 | `{"ts": "2026-11-16 12:00", "pool_price": 26.13, "actual_mw": 2232.6022025, "most_likely_mw": null}` |
 | heatmap | SQL warehouse | 168 | `{"dow": 1, "hour": 0, "avg_price": 17.99}` |
-| backtest | SQL warehouse | 24 | `{"ts": "2026-11-22 00:00", "hour_ending": 1, "actual": 34.76, "prophet_regime": 35.52837505735482, "mc_seasonal": 26.373155926326348, "ensemble": 34.52736763229451, "aeso_forecast": 35.38, "naive_yesterday": 17.32, "cutoff_date": ` |
-| leaderboard | SQL warehouse | 3 | `{"model_name": "aeso_forecast", "model_type": "baseline", "mae_cad_mwh": 3.86, "rmse_cad_mwh": 14.39, "mape_pct": 12.4, "n_days": 14}` |
+| backtest | SQL warehouse | 0 | `` |
+| leaderboard | SQL warehouse | 3 | `{"model_name": "aeso_forecast", "model_type": "baseline", "mae_cad_mwh": 16.24, "rmse_cad_mwh": 55.3, "mape_pct": 21.5, "n_days": 14}` |
 | actions | Lakebase | 3 | `{"action_id": 3, "created_utc": "2026-11-22 18:14", "created_by": "<user>", "action_type": "spike_alert", "window_start": "2026-11-22 17:00", "window_end": "2026-11-22 21:00", "mw": null, "threshold": 0.12, "n` |

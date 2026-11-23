@@ -24,3 +24,8 @@ targets:
       host: https://fevm-energy-canada-demos.cloud.databricks.com
       profile: fevm-energy-canada
       root_path: /Workspace/Users/${workspace.current_user.userName}/aeso-market-pulse
+    # Every job and the pipeline get these tags, so runs and cost filter by demo in the Jobs UI and system tables.
+    presets:
+      tags:
+        use_case: aeso_pool_price_forecast
+        demo: aeso-market-pulse

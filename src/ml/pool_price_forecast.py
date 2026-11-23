@@ -24,7 +24,7 @@
 dbutils.widgets.text("catalog", "energy_canada_demos_catalog")
 dbutils.widgets.text("schema", "aeso_price_forecast")
 dbutils.widgets.dropdown("run_backtest", "false", ["false", "true"])
-dbutils.widgets.text("backtest_days", "5")
+dbutils.widgets.text("backtest_days", "14")
 dbutils.widgets.text("experiment", "")
 CATALOG, SCHEMA = dbutils.widgets.get("catalog"), dbutils.widgets.get("schema")
 RUN_BACKTEST = dbutils.widgets.get("run_backtest") == "true"
@@ -43,12 +43,8 @@ import numpy as np
 import pandas as pd
 import forecast_lib as fl
 
-gold = (spark.table(f"{FQ}.gold_price_features_hourly")
-        .select("ds", "y", "wind_solar_mw", "forecast_pool_price").orderBy("ds").toPandas())
-gold["ds"] = pd.to_datetime(gold["ds"])
-gold["wind_solar_mw"] = gold["wind_solar_mw"].ffill().bfill()
-history = gold[gold["y"].notna()].drop_duplicates("ds").reset_index(drop=True)
-future = gold[gold["ds"] > history["ds"].max()].head(fl.HORIZON).reset_index(drop=True)
+import ensemble_model
+gold, history, future = ensemble_model.load_features(spark, FQ)
 print(f"History: {len(history)} settled hours, {history.ds.min()} .. {history.ds.max()} MPT")
 print(f"Forecast window: {future.ds.min()} .. {future.ds.max()} MPT ({len(future)} hours)")
 
@@ -59,7 +55,6 @@ print(f"Forecast window: {future.ds.min()} .. {future.ds.max()} MPT ({len(future
 # COMMAND ----------
 
 import json
-import ensemble_model
 
 # The forecast uses the training recipe of the registered @champion (promoted by evaluate_challenger.py).
 MODEL_NAME = f"{FQ}.pool_price_ensemble"
@@ -154,15 +149,15 @@ print(f"Wrote {len(out)} forecast rows for run {run_ts} (MLflow run {run_id})")
 # MAGIC For each of the last 5 complete days: train every model on the hours before midnight, forecast that day,
 # MAGIC compare with settled prices. Two baselines anchor the scores: **AESO's own forecast** (published only a
 # MAGIC few hours ahead, so a tough bar for a day-ahead model) and **same hour yesterday**.
-# MAGIC Wind/solar for the test day is the observed value, so Prophet sees a perfect wind forecast (optimistic).
+# MAGIC The test day sees only what was known before it began: AESO's published wind/solar forecast and the supply
+# MAGIC cushion built from it (the `*_dayahead_mw` gold columns), never the realised wind.
 
 # COMMAND ----------
 
 if not RUN_BACKTEST:
     dbutils.notebook.exit(f"Forecast written for run {run_ts}; backtest skipped (run_backtest=false).")
 
-complete_days = history.groupby(history.ds.dt.date).size()
-cutoffs = [pd.Timestamp(d) for d in complete_days[complete_days >= 23].index[-BACKTEST_DAYS:]]
+cutoffs = ensemble_model.complete_days(history, BACKTEST_DAYS)
 by_ds = gold.drop_duplicates("ds").set_index("ds")
 detail = (fl.walk_forward(history, by_ds, cutoffs, {"champion": config})
           .rename(columns={"prophet_regime__champion": "prophet_regime", "ensemble__champion": "ensemble"}))
@@ -174,9 +169,9 @@ print(f"Backtest {cutoffs[0].date()} .. {cutoffs[-1].date()} ({len(detail)} hour
 
 # COMMAND ----------
 
-meta = {"run_timestamp": run_ts, "mlflow_run_id": run_id, "n_days": len(cutoffs)}
+meta = {"run_timestamp": run_ts, "mlflow_run_id": run_id, "n_days": len(cutoffs), "champion_version": str(champion_version)}
 spark.createDataFrame(leaderboard.assign(**meta)).write.mode("append").option("mergeSchema", "true").saveAsTable(f"{FQ}.aeso_backtest_metrics")
-spark.createDataFrame(detail.assign(run_timestamp=run_ts)).write.mode("append").option("mergeSchema", "true").saveAsTable(f"{FQ}.aeso_backtest_detail")
+spark.createDataFrame(detail.assign(run_timestamp=run_ts, champion_version=str(champion_version))).write.mode("append").option("mergeSchema", "true").saveAsTable(f"{FQ}.aeso_backtest_detail")
 with mlflow.start_run(run_id=run_id):
     for r in rows:
         mlflow.log_metrics({f"{r['model_name']}_{k}": v for k, v in r.items() if k in ("mae_cad_mwh", "rmse_cad_mwh", "mape_pct") and v is not None})
